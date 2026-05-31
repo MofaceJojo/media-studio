@@ -28,6 +28,7 @@ class VideoGenerateRequest(BaseModel):
     voice_provider: str = "edge"
     voice: str = "zh-CN-XiaoxiaoNeural"
     local_voice_url: str = ""
+    enable_subtitles: bool = True
 
 
 class VideoGenerateResult(BaseModel):
@@ -37,6 +38,7 @@ class VideoGenerateResult(BaseModel):
     video_url: str = ""
     video_path: str = ""
     audio_path: str = ""
+    subtitle_path: str = ""
     voice_provider: str = ""
     script: str = ""
     scenes: list[str] = Field(default_factory=list)
@@ -95,7 +97,15 @@ def _wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, 
     return lines
 
 
-def _render_slide(path: Path, title: str, scene: str, index: int, total: int, size: tuple[int, int]) -> None:
+def _render_slide(
+    path: Path,
+    title: str,
+    scene: str,
+    index: int,
+    total: int,
+    size: tuple[int, int],
+    show_caption: bool,
+) -> None:
     width, height = size
     palette = [
         ((246, 248, 250), (29, 35, 44), (199, 223, 77)),
@@ -109,6 +119,7 @@ def _render_slide(path: Path, title: str, scene: str, index: int, total: int, si
     title_font = _font(max(42, width // 20))
     scene_font = _font(max(48, width // 18))
     small_font = _font(max(24, width // 42))
+    caption_font = _font(max(32, width // 28))
 
     margin = int(width * 0.075)
     draw.rounded_rectangle(
@@ -130,6 +141,28 @@ def _render_slide(path: Path, title: str, scene: str, index: int, total: int, si
     footer = "Morpheus Video Studio"
     footer_box = draw.textbbox((0, 0), footer, font=small_font)
     draw.text((width - margin - footer_box[2], height - margin - 36), footer, font=small_font, fill=(93, 103, 116))
+
+    if show_caption:
+        caption_lines = _wrap_text(draw, scene, caption_font, width - margin * 2)
+        caption_lines = caption_lines[:2]
+        caption_line_height = int(caption_font.size * 1.32)
+        caption_height = caption_line_height * len(caption_lines) + 42
+        caption_top = height - margin - 92 - caption_height
+        overlay = Image.new("RGBA", size, (0, 0, 0, 0))
+        overlay_draw = ImageDraw.Draw(overlay)
+        overlay_draw.rounded_rectangle(
+            (margin, caption_top, width - margin, caption_top + caption_height),
+            radius=18,
+            fill=(18, 22, 29, 210),
+        )
+        image = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
+        draw = ImageDraw.Draw(image)
+        caption_y = caption_top + 22
+        for line in caption_lines:
+            line_box = draw.textbbox((0, 0), line, font=caption_font)
+            draw.text(((width - line_box[2]) / 2, caption_y), line, font=caption_font, fill=(255, 255, 255))
+            caption_y += caption_line_height
+
     image.save(path)
 
 
@@ -140,6 +173,31 @@ def _write_concat_file(path: Path, slides: list[Path], seconds_per_scene: float)
         lines.append(f"duration {seconds_per_scene:.2f}")
     lines.append(f"file '{slides[-1].as_posix()}'")
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _format_srt_time(seconds: float) -> str:
+    millis = int(round(seconds * 1000))
+    hours, remainder = divmod(millis, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    secs, millis = divmod(remainder, 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+
+def _write_srt(path: Path, scenes: list[str], seconds_per_scene: float) -> None:
+    blocks: list[str] = []
+    for index, scene in enumerate(scenes):
+        start = index * seconds_per_scene
+        end = start + seconds_per_scene
+        blocks.append(
+            "\n".join(
+                [
+                    str(index + 1),
+                    f"{_format_srt_time(start)} --> {_format_srt_time(end)}",
+                    scene,
+                ]
+            )
+        )
+    path.write_text("\n\n".join(blocks) + "\n", encoding="utf-8")
 
 
 def _probe_duration(path: Path) -> float:
@@ -231,13 +289,23 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
     slides: list[Path] = []
     for index, scene in enumerate(scenes):
         slide_path = task_dir / f"scene-{index + 1:02d}.png"
-        _render_slide(slide_path, payload.title, scene, index, len(scenes), size)
+        _render_slide(
+            slide_path,
+            payload.title,
+            scene,
+            index,
+            len(scenes),
+            size,
+            payload.enable_subtitles,
+        )
         slides.append(slide_path)
 
     concat_file = task_dir / "slides.txt"
     output_file = task_dir / "final.mp4"
+    subtitle_file = task_dir / "subtitles.srt"
     metadata_file = task_dir / "metadata.json"
     _write_concat_file(concat_file, slides, scene_seconds)
+    _write_srt(subtitle_file, scenes, scene_seconds)
 
     command = [
         ffmpeg,
@@ -288,6 +356,7 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
                 "scenes": scenes,
                 "video": str(output_file),
                 "audio": str(audio_path) if audio_path else "",
+                "subtitles": str(subtitle_file),
                 "voice_provider": voice_provider,
                 "seconds_per_scene": scene_seconds,
             },
@@ -304,6 +373,7 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
         video_url=f"{PUBLIC_PREFIX}/{task_id}/final.mp4",
         video_path=str(output_file),
         audio_path=str(audio_path) if audio_path else "",
+        subtitle_path=str(subtitle_file),
         voice_provider=voice_provider,
         script=script,
         scenes=scenes,

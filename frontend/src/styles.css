@@ -248,6 +248,12 @@ textarea {
   outline: none;
 }
 
+input[type="checkbox"] {
+  width: 18px;
+  min-height: 18px;
+  accent-color: #7b8a23;
+}
+
 textarea {
   min-height: 86px;
   resize: vertical;
@@ -352,6 +358,18 @@ textarea:focus {
   background: #fbfcfd;
 }
 
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+  background: #fbfcfd;
+  color: #384150;
+}
+
 .compose-panel textarea {
   min-height: 112px;
 }
@@ -395,6 +413,11 @@ textarea:focus {
   color: #20242b;
   text-decoration: none;
   background: #ffffff;
+}
+
+.output-note {
+  color: #5c6878;
+  font-size: 13px;
 }
 
 @media (max-width: 980px) {

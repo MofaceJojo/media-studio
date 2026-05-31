@@ -85,6 +85,7 @@ function App() {
     voice_provider: "edge",
     voice: "zh-CN-XiaoxiaoNeural",
     local_voice_url: "http://127.0.0.1:9880",
+    enable_subtitles: true,
   });
   const [generated, setGenerated] = useState(null);
   const [writing, setWriting] = useState({
@@ -229,6 +230,16 @@ function App() {
               <Field label="Local Voice URL" help="For Omni Voice-style services. Morpheus sends POST /tts with text and voice.">
                 <input value={video.local_voice_url} onChange={(event) => setVideo({ ...video, local_voice_url: event.target.value })} />
               </Field>
+              <Field label="Subtitles" help="Creates a standard SRT file and burns readable captions into the generated video.">
+                <span className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={video.enable_subtitles}
+                    onChange={(event) => setVideo({ ...video, enable_subtitles: event.target.checked })}
+                  />
+                  <span>Burn captions into video</span>
+                </span>
+              </Field>
               <Field label="Topic" help="If script is empty, Morpheus creates a concise local script from this topic.">
                 <textarea value={video.topic} onChange={(event) => setVideo({ ...video, topic: event.target.value })} />
               </Field>
@@ -247,6 +258,7 @@ function App() {
                 <a href={`http://127.0.0.1:8710${generated.video_url}`} target="_blank" rel="noreferrer">
                   <DownloadSimple size={17} /> Open video
                 </a>
+                {generated.subtitle_path ? <span className="output-note">SRT generated with the final video.</span> : null}
               </div>
             ) : null}
           </article>
