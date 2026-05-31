@@ -60,7 +60,7 @@ Open `http://localhost:5173`.
 
 The app can generate a basic MP4 without API keys:
 
-1. Open `Local Video Generator`.
+1. Open `Video Studio` and choose a creation mode.
 2. Enter a title and topic, or paste a script.
 3. Pick `Edge TTS`, `Local Voice API`, or `None` for voiceover.
 4. Keep `Burn captions into video` enabled if you want readable subtitles.
