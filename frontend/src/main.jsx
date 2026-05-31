@@ -82,6 +82,9 @@ function App() {
     script: "",
     aspect: "portrait",
     seconds_per_scene: 3.2,
+    voice_provider: "edge",
+    voice: "zh-CN-XiaoxiaoNeural",
+    local_voice_url: "http://127.0.0.1:9880",
   });
   const [generated, setGenerated] = useState(null);
   const [writing, setWriting] = useState({
@@ -212,6 +215,19 @@ function App() {
                   <option value="landscape">16:9</option>
                   <option value="square">1:1</option>
                 </select>
+              </Field>
+              <Field label="Voiceover" help="Edge TTS is free and classic. None keeps generation fully offline. Local API posts to /tts.">
+                <select value={video.voice_provider} onChange={(event) => setVideo({ ...video, voice_provider: event.target.value })}>
+                  <option value="edge">Edge TTS</option>
+                  <option value="local_api">Local Voice API</option>
+                  <option value="none">None</option>
+                </select>
+              </Field>
+              <Field label="Voice ID" help="For Edge TTS, use a voice such as zh-CN-XiaoxiaoNeural or en-US-JennyNeural.">
+                <input value={video.voice} onChange={(event) => setVideo({ ...video, voice: event.target.value })} />
+              </Field>
+              <Field label="Local Voice URL" help="For Omni Voice-style services. Morpheus sends POST /tts with text and voice.">
+                <input value={video.local_voice_url} onChange={(event) => setVideo({ ...video, local_voice_url: event.target.value })} />
               </Field>
               <Field label="Topic" help="If script is empty, Morpheus creates a concise local script from this topic.">
                 <textarea value={video.topic} onChange={(event) => setVideo({ ...video, topic: event.target.value })} />

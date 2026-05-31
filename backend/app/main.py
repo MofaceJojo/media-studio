@@ -79,4 +79,4 @@ async def writing_run(payload: WritingRequest) -> dict:
 
 @app.post("/api/video/generate")
 async def video_generate(payload: VideoGenerateRequest) -> dict:
-    return generate_local_video(payload).model_dump()
+    return (await generate_local_video(payload)).model_dump()

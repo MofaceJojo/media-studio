@@ -55,10 +55,22 @@ The app can generate a basic MP4 without API keys:
 
 1. Open `Local Video Generator`.
 2. Enter a title and topic, or paste a script.
-3. Click `Generate MP4`.
-4. The generated video is saved under `backend/storage/generated` and served from `/outputs/.../final.mp4`.
+3. Pick `Edge TTS`, `Local Voice API`, or `None` for voiceover.
+4. Click `Generate MP4`.
+5. The generated video is saved under `backend/storage/generated` and served from `/outputs/.../final.mp4`.
 
-The first generation path is intentionally simple: text scenes are rendered to slides and combined with ffmpeg. Pexels, Pixabay, ComfyUI, LLM providers, and local voice engines remain available as integration points.
+The first generation path is intentionally simple: text scenes are rendered to slides and combined with ffmpeg. When Edge TTS is reachable, Morpheus generates a real voiceover and stretches scene duration to fit the audio. If voice generation fails, it falls back to a silent AAC track so video generation still completes.
+
+For Omni Voice-style local engines, choose `Local Voice API`. Morpheus sends:
+
+```http
+POST /tts
+Content-Type: application/json
+
+{"text":"...", "voice":"..."}
+```
+
+The endpoint should return audio bytes. Pexels, Pixabay, ComfyUI, and LLM providers remain available as integration points.
 
 ## Writing Tools
 

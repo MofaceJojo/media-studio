@@ -7,6 +7,7 @@ import subprocess
 import uuid
 from pathlib import Path
 
+import httpx
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 
@@ -24,6 +25,9 @@ class VideoGenerateRequest(BaseModel):
     script: str = ""
     aspect: str = "portrait"
     seconds_per_scene: float = Field(default=3.2, ge=1.5, le=8)
+    voice_provider: str = "edge"
+    voice: str = "zh-CN-XiaoxiaoNeural"
+    local_voice_url: str = ""
 
 
 class VideoGenerateResult(BaseModel):
@@ -32,6 +36,8 @@ class VideoGenerateResult(BaseModel):
     message: str
     video_url: str = ""
     video_path: str = ""
+    audio_path: str = ""
+    voice_provider: str = ""
     script: str = ""
     scenes: list[str] = Field(default_factory=list)
 
@@ -136,7 +142,74 @@ def _write_concat_file(path: Path, slides: list[Path], seconds_per_scene: float)
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateResult:
+def _probe_duration(path: Path) -> float:
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe or not path.exists():
+        return 0.0
+    completed = subprocess.run(
+        [
+            ffprobe,
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    if completed.returncode != 0:
+        return 0.0
+    try:
+        return float(completed.stdout.strip())
+    except ValueError:
+        return 0.0
+
+
+async def _create_voiceover(payload: VideoGenerateRequest, script: str, task_dir: Path) -> tuple[Path | None, str]:
+    provider = payload.voice_provider.strip() or "edge"
+    if provider == "none":
+        return None, "none"
+
+    audio_path = task_dir / "voiceover.mp3"
+    narration = re.sub(r"^\s*\d+[\.、)]\s*", "", script, flags=re.MULTILINE)
+    narration = re.sub(r"\s+", " ", narration).strip()
+    if not narration:
+        return None, "none"
+
+    if provider == "local_api":
+        base_url = payload.local_voice_url.strip().rstrip("/")
+        if not base_url:
+            return None, "silent"
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.post(
+                    f"{base_url}/tts",
+                    json={"text": narration, "voice": payload.voice},
+                )
+                response.raise_for_status()
+            audio_path.write_bytes(response.content)
+            if audio_path.stat().st_size > 0:
+                return audio_path, "local_api"
+        except Exception:
+            return None, "silent"
+
+    try:
+        import edge_tts
+
+        communicate = edge_tts.Communicate(narration, payload.voice)
+        await communicate.save(str(audio_path))
+        if audio_path.exists() and audio_path.stat().st_size > 0:
+            return audio_path, "edge"
+    except Exception:
+        return None, "silent"
+    return None, "silent"
+
+
+async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateResult:
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         return VideoGenerateResult(ok=False, task_id="", message="ffmpeg is required but was not found.")
@@ -147,6 +220,13 @@ def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateResult:
 
     script = payload.script.strip() or video_script(payload.topic or payload.title)
     scenes = split_scenes(script)
+    audio_path, voice_provider = await _create_voiceover(payload, script, task_dir)
+    scene_seconds = payload.seconds_per_scene
+    if audio_path:
+        audio_duration = _probe_duration(audio_path)
+        if audio_duration > 0:
+            scene_seconds = max(scene_seconds, (audio_duration + 0.35) / max(1, len(scenes)))
+
     size = _resolution(payload.aspect)
     slides: list[Path] = []
     for index, scene in enumerate(scenes):
@@ -157,7 +237,7 @@ def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateResult:
     concat_file = task_dir / "slides.txt"
     output_file = task_dir / "final.mp4"
     metadata_file = task_dir / "metadata.json"
-    _write_concat_file(concat_file, slides, payload.seconds_per_scene)
+    _write_concat_file(concat_file, slides, scene_seconds)
 
     command = [
         ffmpeg,
@@ -168,23 +248,27 @@ def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateResult:
         "0",
         "-i",
         str(concat_file),
-        "-f",
-        "lavfi",
-        "-i",
-        "anullsrc=channel_layout=stereo:sample_rate=44100",
-        "-shortest",
-        "-vf",
-        "format=yuv420p",
-        "-c:v",
-        "libx264",
-        "-r",
-        "30",
-        "-pix_fmt",
-        "yuv420p",
-        "-c:a",
-        "aac",
-        str(output_file),
     ]
+    if audio_path:
+        command.extend(["-i", str(audio_path)])
+    else:
+        command.extend(["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"])
+    command.extend(
+        [
+            "-shortest",
+            "-vf",
+            "format=yuv420p",
+            "-c:v",
+            "libx264",
+            "-r",
+            "30",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            str(output_file),
+        ]
+    )
     completed = subprocess.run(command, capture_output=True, text=True, timeout=120)
     if completed.returncode != 0:
         return VideoGenerateResult(
@@ -203,6 +287,9 @@ def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateResult:
                 "script": script,
                 "scenes": scenes,
                 "video": str(output_file),
+                "audio": str(audio_path) if audio_path else "",
+                "voice_provider": voice_provider,
+                "seconds_per_scene": scene_seconds,
             },
             ensure_ascii=False,
             indent=2,
@@ -216,6 +303,8 @@ def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateResult:
         message="Video generated.",
         video_url=f"{PUBLIC_PREFIX}/{task_id}/final.mp4",
         video_path=str(output_file),
+        audio_path=str(audio_path) if audio_path else "",
+        voice_provider=voice_provider,
         script=script,
         scenes=scenes,
     )
