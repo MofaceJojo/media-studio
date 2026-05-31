@@ -21,6 +21,7 @@ PUBLIC_PREFIX = "/outputs"
 
 
 class VideoGenerateRequest(BaseModel):
+    mode: str = "quick"
     title: str = "Morpheus Video Studio"
     topic: str = ""
     script: str = ""
@@ -644,6 +645,7 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
         json.dumps(
             {
                 "task_id": task_id,
+                "mode": payload.mode,
                 "title": payload.title,
                 "script": script,
                 "scenes": scenes,

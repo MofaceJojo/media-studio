@@ -27,9 +27,29 @@ def parse_source_file_paths(raw_paths: str) -> list[Path]:
         if not value:
             continue
         path = Path(value).expanduser()
-        if path.exists() and path.is_file() and path.suffix.lower() in {".txt", ".md"}:
+        if path.exists() and path.is_file() and path.suffix.lower() in {".txt", ".md", ".pdf"}:
             paths.append(path)
     return paths
+
+
+def _read_pdf(path: Path, max_chars: int) -> str:
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(str(path))
+        pages: list[str] = []
+        remaining = max_chars
+        for page in reader.pages:
+            if remaining <= 0:
+                break
+            text = (page.extract_text() or "").strip()
+            if not text:
+                continue
+            pages.append(text[:remaining])
+            remaining -= len(text)
+        return "\n".join(pages).strip()
+    except Exception:
+        return ""
 
 
 def read_source_files(raw_paths: str, max_chars: int = 12000) -> tuple[str, list[str]]:
@@ -39,10 +59,13 @@ def read_source_files(raw_paths: str, max_chars: int = 12000) -> tuple[str, list
     for path in parse_source_file_paths(raw_paths):
         if remaining <= 0:
             break
-        try:
-            text = path.read_text(encoding="utf-8", errors="ignore").strip()
-        except OSError:
-            continue
+        if path.suffix.lower() == ".pdf":
+            text = _read_pdf(path, remaining)
+        else:
+            try:
+                text = path.read_text(encoding="utf-8", errors="ignore").strip()
+            except OSError:
+                continue
         if not text:
             continue
         text = text[:remaining]

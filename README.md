@@ -9,6 +9,7 @@ This first integrated build keeps the free/local-first pieces:
 - Local/free voice options only: Edge TTS, ComfyUI TTS workflows, and a generic Local Voice API for Omni Voice-style engines.
 - OpenAI-compatible LLM providers with presets, default Base URLs, model fetching, custom model entry, and one-click connection tests.
 - No RunningHub cloud configuration or workflow surface.
+- Pixelle-style video module modes: quick creation, custom materials, avatar-style narration, image-to-video, motion transfer, and story/PDF-to-video.
 
 ## Run
 
@@ -64,12 +65,12 @@ The app can generate a basic MP4 without API keys:
 3. Pick `Edge TTS`, `Local Voice API`, or `None` for voiceover.
 4. Keep `Burn captions into video` enabled if you want readable subtitles.
 5. Optionally paste local image or video paths, one per line, to use them as scene backgrounds.
-6. Optionally paste local `.txt` or `.md` paths and choose a file skill. If `Script` is empty, Morpheus reads those files and turns them into scenes before rendering.
+6. Optionally paste local `.txt`, `.md`, or `.pdf` paths and choose a file skill. If `Script` is empty, Morpheus reads those files and turns them into scenes before rendering.
 7. Optionally enable `Use in generator` under `Video Sources` to download Pexels/Pixabay stock clips when local media is empty.
 8. Click `Generate MP4`.
 9. The generated video is saved under `backend/storage/generated` and served from `/outputs/.../final.mp4`.
 
-The first generation path is intentionally simple: text scenes are rendered to image/video scene clips and combined with ffmpeg. Morpheus can cycle local image and video files as backgrounds, read local text files as source material, download free Pexels/Pixabay clips when API keys are configured, writes a standard `subtitles.srt` file, and can burn captions into the video frames. When Edge TTS is reachable, Morpheus generates a real voiceover and stretches scene duration to fit the audio. If voice generation fails, it falls back to a silent AAC track so video generation still completes.
+The first generation path is intentionally simple: text scenes are rendered to image/video scene clips and combined with ffmpeg. Morpheus can cycle local image and video files as backgrounds, read local text/PDF files as source material, download free Pexels/Pixabay clips when API keys are configured, writes a standard `subtitles.srt` file, and can burn captions into the video frames. When Edge TTS is reachable, Morpheus generates a real voiceover and stretches scene duration to fit the audio. If voice generation fails, it falls back to a silent AAC track so video generation still completes.
 
 For Omni Voice-style local engines, choose `Local Voice API`. Morpheus sends:
 
@@ -90,7 +91,7 @@ The endpoint should return audio bytes. Pexels, Pixabay, ComfyUI, and LLM provid
 - polishing text
 - creating a compact novel outline
 
-Both the writing panel and the video generator accept local `.txt` or `.md` source files. Paste one path per line; Morpheus reads the files locally and applies the selected skill before filling the video script or returning the edited text.
+Both the writing panel and the video generator accept local `.txt`, `.md`, or `.pdf` source files. Paste one path per line; Morpheus reads the files locally and applies the selected skill before filling the video script or returning the edited text.
 
 ## Integration Notes
 

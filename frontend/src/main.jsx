@@ -7,17 +7,61 @@ import {
   DownloadSimple,
   FileText,
   FilmSlate,
+  Images,
   GearSix,
   ListChecks,
   MagicWand,
   MicrophoneStage,
+  PaintBrush,
+  PersonSimpleRun,
   Question,
+  Robot,
   Sparkle,
+  StackSimple,
   WarningCircle,
 } from "@phosphor-icons/react";
 import "./styles.css";
 
 const API = "http://127.0.0.1:8710/api";
+
+const VIDEO_MODES = [
+  {
+    id: "quick",
+    label: "快速创作",
+    icon: Sparkle,
+    hint: "标题、主题或脚本直接生成本地 MP4。",
+  },
+  {
+    id: "custom_materials",
+    label: "自定义素材",
+    icon: PaintBrush,
+    hint: "优先使用本地图片/视频，也可接 Pexels/Pixabay。",
+  },
+  {
+    id: "avatar_talk",
+    label: "数字人口播",
+    icon: Robot,
+    hint: "保留本地语音/API 入口，先输出口播字幕视频。",
+  },
+  {
+    id: "image_to_video",
+    label: "图生视频",
+    icon: Images,
+    hint: "使用本地图片作为场景背景，可连接 ComfyUI 工作流。",
+  },
+  {
+    id: "motion_transfer",
+    label: "动作迁移",
+    icon: PersonSimpleRun,
+    hint: "保留本地 ComfyUI 工作流入口，不接付费云端。",
+  },
+  {
+    id: "storybook_pdf",
+    label: "绘本/PDF自动视频",
+    icon: StackSimple,
+    hint: "读取小说/文稿文件，先转场景再生成视频。",
+  },
+];
 
 const request = async (path, options = {}) => {
   const response = await fetch(`${API}${path}`, {
@@ -82,7 +126,9 @@ function App() {
     voice: "zh-CN-XiaoxiaoNeural",
     base_url: "http://127.0.0.1:9880",
   });
+  const [activeVideoMode, setActiveVideoMode] = useState("quick");
   const [video, setVideo] = useState({
+    mode: "quick",
     title: "Morpheus Video Studio",
     topic: "普通人如何用长期主义改变人生",
     script: "",
@@ -227,8 +273,37 @@ function App() {
         <section className="studio-grid">
           <article className="panel compose-panel">
             <div className="panel-title">
-              <h2>Local Video Generator</h2>
+              <h2>Video Studio</h2>
               <Result result={results.video} />
+            </div>
+            <div className="mode-strip" role="tablist" aria-label="Video creation modes">
+              {VIDEO_MODES.map((mode) => {
+                const Icon = mode.icon;
+                const active = activeVideoMode === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    className={`mode-tab ${active ? "active" : ""}`}
+                    type="button"
+                    aria-selected={active}
+                    onClick={() => {
+                      setActiveVideoMode(mode.id);
+                      setVideo((current) => ({
+                        ...current,
+                        mode: mode.id,
+                        source_file_skill: mode.id === "storybook_pdf" ? "novel_outline" : current.source_file_skill,
+                        voice_provider: mode.id === "avatar_talk" && current.voice_provider === "none" ? "edge" : current.voice_provider,
+                      }));
+                    }}
+                  >
+                    <Icon size={17} weight={active ? "fill" : "regular"} />
+                    <span>{mode.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mode-note">
+              {VIDEO_MODES.find((mode) => mode.id === activeVideoMode)?.hint}
             </div>
             <div className="grid two">
               <Field label="Title" help="Used on generated slides and metadata.">

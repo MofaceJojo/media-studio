@@ -211,6 +211,39 @@ button:disabled {
   margin-bottom: 16px;
 }
 
+.mode-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mode-tab {
+  min-height: 38px;
+  padding: 0 11px;
+  background: #fbfcfd;
+  color: #3e4857;
+  white-space: nowrap;
+}
+
+.mode-tab.active {
+  border-color: #d64242;
+  background: #fff5f5;
+  color: #d12f2f;
+}
+
+.mode-note {
+  min-height: 34px;
+  margin-bottom: 14px;
+  padding: 8px 10px;
+  border: 1px solid #e3e7ef;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #5b6676;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 .grid {
   display: grid;
   gap: 14px;
