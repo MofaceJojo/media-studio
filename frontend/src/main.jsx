@@ -86,6 +86,7 @@ function App() {
     voice: "zh-CN-XiaoxiaoNeural",
     local_voice_url: "http://127.0.0.1:9880",
     enable_subtitles: true,
+    local_media_paths: "",
   });
   const [generated, setGenerated] = useState(null);
   const [writing, setWriting] = useState({
@@ -240,6 +241,13 @@ function App() {
                   <span>Burn captions into video</span>
                 </span>
               </Field>
+              <Field label="Local media" help="Optional. Paste one local image or video file path per line; Morpheus cycles them as scene backgrounds.">
+                <textarea
+                  value={video.local_media_paths}
+                  onChange={(event) => setVideo({ ...video, local_media_paths: event.target.value })}
+                  placeholder="/Users/you/Videos/background.mp4"
+                />
+              </Field>
               <Field label="Topic" help="If script is empty, Morpheus creates a concise local script from this topic.">
                 <textarea value={video.topic} onChange={(event) => setVideo({ ...video, topic: event.target.value })} />
               </Field>
@@ -259,6 +267,7 @@ function App() {
                   <DownloadSimple size={17} /> Open video
                 </a>
                 {generated.subtitle_path ? <span className="output-note">SRT generated with the final video.</span> : null}
+                {generated.media_used?.length ? <span className="output-note">Local media: {generated.media_used.length} scene link(s).</span> : null}
               </div>
             ) : null}
           </article>

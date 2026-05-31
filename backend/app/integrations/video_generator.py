@@ -29,6 +29,7 @@ class VideoGenerateRequest(BaseModel):
     voice: str = "zh-CN-XiaoxiaoNeural"
     local_voice_url: str = ""
     enable_subtitles: bool = True
+    local_media_paths: str = ""
 
 
 class VideoGenerateResult(BaseModel):
@@ -40,6 +41,7 @@ class VideoGenerateResult(BaseModel):
     audio_path: str = ""
     subtitle_path: str = ""
     voice_provider: str = ""
+    media_used: list[str] = Field(default_factory=list)
     script: str = ""
     scenes: list[str] = Field(default_factory=list)
 
@@ -105,6 +107,7 @@ def _render_slide(
     total: int,
     size: tuple[int, int],
     show_caption: bool,
+    background_path: Path | None = None,
 ) -> None:
     width, height = size
     palette = [
@@ -114,7 +117,17 @@ def _render_slide(
         ((242, 244, 248), (31, 38, 52), (74, 114, 182)),
     ]
     bg, ink, accent = palette[index % len(palette)]
-    image = Image.new("RGB", size, bg)
+    if background_path and background_path.exists():
+        source = Image.open(background_path).convert("RGB")
+        scale = max(width / source.width, height / source.height)
+        resized = source.resize((int(source.width * scale), int(source.height * scale)))
+        left = max(0, (resized.width - width) // 2)
+        top = max(0, (resized.height - height) // 2)
+        image = resized.crop((left, top, left + width, top + height))
+        dim = Image.new("RGBA", size, (246, 248, 250, 72))
+        image = Image.alpha_composite(image.convert("RGBA"), dim).convert("RGB")
+    else:
+        image = Image.new("RGB", size, bg)
     draw = ImageDraw.Draw(image)
     title_font = _font(max(42, width // 20))
     scene_font = _font(max(48, width // 18))
@@ -166,6 +179,51 @@ def _render_slide(
     image.save(path)
 
 
+def _render_overlay(
+    path: Path,
+    title: str,
+    scene: str,
+    index: int,
+    total: int,
+    size: tuple[int, int],
+    show_caption: bool,
+) -> None:
+    width, height = size
+    image = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    title_font = _font(max(42, width // 20))
+    small_font = _font(max(24, width // 42))
+    caption_font = _font(max(32, width // 28))
+    margin = int(width * 0.075)
+
+    draw.rounded_rectangle((0, 0, width, height), radius=0, fill=(0, 0, 0, 46))
+    draw.rounded_rectangle((margin, margin, width - margin, margin + 18), radius=9, fill=(199, 223, 77, 235))
+    draw.text((margin, margin + 48), title[:40], font=title_font, fill=(255, 255, 255, 245))
+    draw.text((margin, margin + 120), f"{index + 1:02d} / {total:02d}", font=small_font, fill=(213, 241, 93, 245))
+
+    if show_caption:
+        caption_lines = _wrap_text(draw, scene, caption_font, width - margin * 2)
+        caption_lines = caption_lines[:2]
+        caption_line_height = int(caption_font.size * 1.32)
+        caption_height = caption_line_height * len(caption_lines) + 42
+        caption_top = height - margin - 92 - caption_height
+        draw.rounded_rectangle(
+            (margin, caption_top, width - margin, caption_top + caption_height),
+            radius=18,
+            fill=(18, 22, 29, 218),
+        )
+        caption_y = caption_top + 22
+        for line in caption_lines:
+            line_box = draw.textbbox((0, 0), line, font=caption_font)
+            draw.text(((width - line_box[2]) / 2, caption_y), line, font=caption_font, fill=(255, 255, 255, 255))
+            caption_y += caption_line_height
+
+    footer = "Morpheus Video Studio"
+    footer_box = draw.textbbox((0, 0), footer, font=small_font)
+    draw.text((width - margin - footer_box[2], height - margin - 36), footer, font=small_font, fill=(255, 255, 255, 210))
+    image.save(path)
+
+
 def _write_concat_file(path: Path, slides: list[Path], seconds_per_scene: float) -> None:
     lines: list[str] = []
     for slide in slides:
@@ -173,6 +231,87 @@ def _write_concat_file(path: Path, slides: list[Path], seconds_per_scene: float)
         lines.append(f"duration {seconds_per_scene:.2f}")
     lines.append(f"file '{slides[-1].as_posix()}'")
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _write_video_concat_file(path: Path, clips: list[Path]) -> None:
+    path.write_text(
+        "\n".join(f"file '{clip.as_posix()}'" for clip in clips) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _create_image_scene(ffmpeg: str, image_path: Path, clip_path: Path, duration: float) -> bool:
+    completed = subprocess.run(
+        [
+            ffmpeg,
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            str(image_path),
+            "-t",
+            f"{duration:.2f}",
+            "-vf",
+            "format=yuv420p",
+            "-c:v",
+            "libx264",
+            "-r",
+            "30",
+            "-pix_fmt",
+            "yuv420p",
+            str(clip_path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    return completed.returncode == 0 and clip_path.exists()
+
+
+def _create_video_scene(
+    ffmpeg: str,
+    media_path: Path,
+    overlay_path: Path,
+    clip_path: Path,
+    size: tuple[int, int],
+    duration: float,
+) -> bool:
+    width, height = size
+    filter_graph = (
+        f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
+        f"crop={width}:{height},setsar=1[bg];"
+        "[bg][1:v]overlay=0:0,format=yuv420p[v]"
+    )
+    completed = subprocess.run(
+        [
+            ffmpeg,
+            "-y",
+            "-stream_loop",
+            "-1",
+            "-i",
+            str(media_path),
+            "-i",
+            str(overlay_path),
+            "-t",
+            f"{duration:.2f}",
+            "-filter_complex",
+            filter_graph,
+            "-map",
+            "[v]",
+            "-an",
+            "-c:v",
+            "libx264",
+            "-r",
+            "30",
+            "-pix_fmt",
+            "yuv420p",
+            str(clip_path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    return completed.returncode == 0 and clip_path.exists()
 
 
 def _format_srt_time(seconds: float) -> str:
@@ -198,6 +337,26 @@ def _write_srt(path: Path, scenes: list[str], seconds_per_scene: float) -> None:
             )
         )
     path.write_text("\n\n".join(blocks) + "\n", encoding="utf-8")
+
+
+def _parse_media_paths(raw_paths: str) -> list[Path]:
+    paths: list[Path] = []
+    for item in re.split(r"[\n,]+", raw_paths):
+        value = item.strip().strip('"').strip("'")
+        if not value:
+            continue
+        path = Path(value).expanduser()
+        if path.exists() and path.is_file():
+            paths.append(path)
+    return paths
+
+
+def _is_image(path: Path) -> bool:
+    return path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+
+
+def _is_video(path: Path) -> bool:
+    return path.suffix.lower() in {".mp4", ".mov", ".m4v", ".mkv", ".webm"}
 
 
 def _probe_duration(path: Path) -> float:
@@ -286,9 +445,31 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
             scene_seconds = max(scene_seconds, (audio_duration + 0.35) / max(1, len(scenes)))
 
     size = _resolution(payload.aspect)
-    slides: list[Path] = []
+    media_paths = _parse_media_paths(payload.local_media_paths)
+    media_used: list[str] = []
+    scene_clips: list[Path] = []
     for index, scene in enumerate(scenes):
+        media_path = media_paths[index % len(media_paths)] if media_paths else None
+        if media_path:
+            media_used.append(str(media_path))
+        clip_path = task_dir / f"clip-{index + 1:02d}.mp4"
+        if media_path and _is_video(media_path):
+            overlay_path = task_dir / f"overlay-{index + 1:02d}.png"
+            _render_overlay(
+                overlay_path,
+                payload.title,
+                scene,
+                index,
+                len(scenes),
+                size,
+                payload.enable_subtitles,
+            )
+            if _create_video_scene(ffmpeg, media_path, overlay_path, clip_path, size, scene_seconds):
+                scene_clips.append(clip_path)
+                continue
+
         slide_path = task_dir / f"scene-{index + 1:02d}.png"
+        background_path = media_path if media_path and _is_image(media_path) else None
         _render_slide(
             slide_path,
             payload.title,
@@ -297,16 +478,26 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
             len(scenes),
             size,
             payload.enable_subtitles,
+            background_path,
         )
-        slides.append(slide_path)
+        if not _create_image_scene(ffmpeg, slide_path, clip_path, scene_seconds):
+            return VideoGenerateResult(
+                ok=False,
+                task_id=task_id,
+                message="ffmpeg failed while creating a scene clip.",
+                script=script,
+                scenes=scenes,
+            )
+        scene_clips.append(clip_path)
 
     concat_file = task_dir / "slides.txt"
     output_file = task_dir / "final.mp4"
+    base_video_file = task_dir / "base.mp4"
     subtitle_file = task_dir / "subtitles.srt"
     metadata_file = task_dir / "metadata.json"
-    _write_concat_file(concat_file, slides, scene_seconds)
     _write_srt(subtitle_file, scenes, scene_seconds)
 
+    _write_video_concat_file(concat_file, scene_clips)
     command = [
         ffmpeg,
         "-y",
@@ -316,7 +507,21 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
         "0",
         "-i",
         str(concat_file),
+        "-c",
+        "copy",
+        str(base_video_file),
     ]
+    completed = subprocess.run(command, capture_output=True, text=True, timeout=120)
+    if completed.returncode != 0:
+        return VideoGenerateResult(
+            ok=False,
+            task_id=task_id,
+            message=completed.stderr[-800:] or "ffmpeg failed while combining scene clips.",
+            script=script,
+            scenes=scenes,
+        )
+
+    command = [ffmpeg, "-y", "-i", str(base_video_file)]
     if audio_path:
         command.extend(["-i", str(audio_path)])
     else:
@@ -324,14 +529,12 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
     command.extend(
         [
             "-shortest",
-            "-vf",
-            "format=yuv420p",
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
             "-c:v",
-            "libx264",
-            "-r",
-            "30",
-            "-pix_fmt",
-            "yuv420p",
+            "copy",
             "-c:a",
             "aac",
             str(output_file),
@@ -339,13 +542,35 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
     )
     completed = subprocess.run(command, capture_output=True, text=True, timeout=120)
     if completed.returncode != 0:
-        return VideoGenerateResult(
-            ok=False,
-            task_id=task_id,
-            message=completed.stderr[-800:] or "ffmpeg failed.",
-            script=script,
-            scenes=scenes,
-        )
+        command = [
+            ffmpeg,
+            "-y",
+            "-i",
+            str(base_video_file),
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=channel_layout=stereo:sample_rate=44100",
+            "-shortest",
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            str(output_file),
+        ]
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=120)
+        if completed.returncode != 0:
+            return VideoGenerateResult(
+                ok=False,
+                task_id=task_id,
+                message=completed.stderr[-800:] or "ffmpeg failed.",
+                script=script,
+                scenes=scenes,
+            )
 
     metadata_file.write_text(
         json.dumps(
@@ -358,6 +583,7 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
                 "audio": str(audio_path) if audio_path else "",
                 "subtitles": str(subtitle_file),
                 "voice_provider": voice_provider,
+                "media_used": media_used,
                 "seconds_per_scene": scene_seconds,
             },
             ensure_ascii=False,
@@ -375,6 +601,7 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
         audio_path=str(audio_path) if audio_path else "",
         subtitle_path=str(subtitle_file),
         voice_provider=voice_provider,
+        media_used=media_used,
         script=script,
         scenes=scenes,
     )

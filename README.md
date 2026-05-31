@@ -57,10 +57,11 @@ The app can generate a basic MP4 without API keys:
 2. Enter a title and topic, or paste a script.
 3. Pick `Edge TTS`, `Local Voice API`, or `None` for voiceover.
 4. Keep `Burn captions into video` enabled if you want readable subtitles.
-5. Click `Generate MP4`.
-6. The generated video is saved under `backend/storage/generated` and served from `/outputs/.../final.mp4`.
+5. Optionally paste local image or video paths, one per line, to use them as scene backgrounds.
+6. Click `Generate MP4`.
+7. The generated video is saved under `backend/storage/generated` and served from `/outputs/.../final.mp4`.
 
-The first generation path is intentionally simple: text scenes are rendered to slides and combined with ffmpeg. Morpheus also writes a standard `subtitles.srt` file and can burn captions into the video frames. When Edge TTS is reachable, Morpheus generates a real voiceover and stretches scene duration to fit the audio. If voice generation fails, it falls back to a silent AAC track so video generation still completes.
+The first generation path is intentionally simple: text scenes are rendered to image/video scene clips and combined with ffmpeg. Morpheus can cycle local image and video files as backgrounds, writes a standard `subtitles.srt` file, and can burn captions into the video frames. When Edge TTS is reachable, Morpheus generates a real voiceover and stretches scene duration to fit the audio. If voice generation fails, it falls back to a silent AAC track so video generation still completes.
 
 For Omni Voice-style local engines, choose `Local Voice API`. Morpheus sends:
 
