@@ -6,7 +6,7 @@ This first integrated build keeps the free/local-first pieces:
 
 - Pexels and Pixabay online material search, using a MoneyPrinterTurbo-style key rotation and TLS-safe request flow.
 - Local/self-hosted ComfyUI workflows copied from Pixelle-Video `workflows/selfhost`.
-- Local/free voice options only: Edge TTS, ChatTTS, GPT-SoVITS, CosyVoice, and ComfyUI TTS workflows.
+- Local/free voice options only: Edge TTS, ComfyUI TTS workflows, and a generic Local Voice API for Omni Voice-style engines.
 - OpenAI-compatible LLM providers with presets, default Base URLs, model fetching, custom model entry, and one-click connection tests.
 - No RunningHub cloud configuration or workflow surface.
 

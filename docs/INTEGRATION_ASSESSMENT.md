@@ -14,11 +14,12 @@ For AI-generated video, Pixelle-Video is stronger than both because it has curre
 
 - RunningHub cloud settings and workflows.
 - Paid cloud TTS providers from the active UI: Azure, AliCloud, and Tencent Cloud.
+- Named local voice engines that add UI clutter before integration is real: ChatTTS, GPT-SoVITS, and CosyVoice. These can be connected through the generic Local Voice API when needed.
 - Recommendation-style helper copy. Configuration notes are behind small question buttons.
 
 ## Kept
 
 - Pexels API and Pixabay API.
-- Free/local TTS: Edge TTS, ChatTTS, GPT-SoVITS, CosyVoice, ComfyUI TTS.
+- Free/local TTS: Edge TTS, ComfyUI TTS, and a generic Local Voice API for Omni Voice-style services.
 - Local ComfyUI.
 - OpenAI-compatible LLM providers with OpenRouter, fallback model lists, model loading, and one-click tests.

@@ -67,7 +67,12 @@ function App() {
   const [models, setModels] = useState([]);
   const [material, setMaterial] = useState({ provider: "pexels", api_keys: "", query: "city night", aspect: "portrait" });
   const [comfy, setComfy] = useState({ base_url: "http://127.0.0.1:8188", api_key: "" });
-  const [tts, setTts] = useState({ provider: "edge", text: "Morpheus Video Studio 配音测试。", voice: "zh-CN-XiaoxiaoNeural" });
+  const [tts, setTts] = useState({
+    provider: "edge",
+    text: "Morpheus Video Studio 配音测试。",
+    voice: "zh-CN-XiaoxiaoNeural",
+    base_url: "http://127.0.0.1:9880",
+  });
   const [results, setResults] = useState({});
   const [busy, setBusy] = useState("");
 
@@ -246,20 +251,23 @@ function App() {
               <Result result={results.tts} />
             </div>
             <div className="grid two">
-              <Field label="Provider" help="Only local or free options are kept. Paid cloud TTS providers are intentionally excluded.">
+              <Field label="Provider" help="Only free or local voice options are kept. Paid cloud voice services are excluded.">
                 <select value={tts.provider} onChange={(event) => setTts({ ...tts, provider: event.target.value })}>
                   {ttsProviders.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}
                 </select>
               </Field>
-              <Field label="Voice" help="Edge voice id or local voice identifier.">
+              <Field label="Voice" help="Edge voice id, ComfyUI workflow voice value, or a local voice identifier.">
                 <input value={tts.voice} onChange={(event) => setTts({ ...tts, voice: event.target.value })} />
               </Field>
-              <Field label="Preview text" help="The one-click test creates a short Edge TTS preview or validates local-provider selection.">
+              <Field label="Local API URL" help="Reserved for local voice engines such as Omni Voice. The test checks /health first, then the base URL.">
+                <input value={tts.base_url} onChange={(event) => setTts({ ...tts, base_url: event.target.value })} />
+              </Field>
+              <Field label="Preview text" help="The one-click test creates a short Edge TTS preview or validates the selected local voice endpoint.">
                 <textarea value={tts.text} onChange={(event) => setTts({ ...tts, text: event.target.value })} />
               </Field>
               <div className="voice-list">
                 <MicrophoneStage size={22} />
-                <span>Edge TTS, ChatTTS, GPT-SoVITS, CosyVoice, ComfyUI TTS</span>
+                <span>Edge TTS, ComfyUI TTS workflow, Local Voice API for Omni Voice-style services</span>
               </div>
             </div>
             <div className="actions">
