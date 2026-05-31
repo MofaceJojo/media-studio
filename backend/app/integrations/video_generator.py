@@ -11,6 +11,7 @@ import httpx
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 
+from app.integrations.materials import MaterialSearchRequest, search_materials
 from app.integrations.writing import WritingRequest, read_source_files, run_writing_tool, video_script
 
 
@@ -32,6 +33,10 @@ class VideoGenerateRequest(BaseModel):
     local_media_paths: str = ""
     source_file_paths: str = ""
     source_file_skill: str = "video_script"
+    use_online_materials: bool = False
+    online_material_provider: str = "pexels"
+    online_material_api_keys: list[str] = Field(default_factory=list)
+    online_material_query: str = ""
 
 
 class VideoGenerateResult(BaseModel):
@@ -362,6 +367,47 @@ def _is_video(path: Path) -> bool:
     return path.suffix.lower() in {".mp4", ".mov", ".m4v", ".mkv", ".webm"}
 
 
+async def _download_video(url: str, path: Path, max_bytes: int = 90_000_000) -> bool:
+    try:
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True, verify=True) as client:
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                total = 0
+                with path.open("wb") as file:
+                    async for chunk in response.aiter_bytes(1024 * 256):
+                        total += len(chunk)
+                        if total > max_bytes:
+                            return False
+                        file.write(chunk)
+        return path.exists() and path.stat().st_size > 0
+    except Exception:
+        return False
+
+
+async def _fetch_online_materials(payload: VideoGenerateRequest, task_dir: Path, count: int) -> list[Path]:
+    keys = [key.strip() for key in payload.online_material_api_keys if key.strip()]
+    if not payload.use_online_materials or not keys:
+        return []
+    result = await search_materials(
+        MaterialSearchRequest(
+            provider=payload.online_material_provider,
+            api_keys=keys,
+            query=payload.online_material_query or payload.topic or payload.title,
+            aspect=payload.aspect,
+            min_duration=max(2, int(payload.seconds_per_scene)),
+        )
+    )
+    if not result.ok:
+        return []
+
+    paths: list[Path] = []
+    for index, item in enumerate(result.items[: max(1, min(count, 4))]):
+        path = task_dir / f"online-{index + 1:02d}.mp4"
+        if await _download_video(item.url, path):
+            paths.append(path)
+    return paths
+
+
 def _probe_duration(path: Path) -> float:
     ffprobe = shutil.which("ffprobe")
     if not ffprobe or not path.exists():
@@ -466,6 +512,8 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
 
     size = _resolution(payload.aspect)
     media_paths = _parse_media_paths(payload.local_media_paths)
+    if not media_paths:
+        media_paths = await _fetch_online_materials(payload, task_dir, len(scenes))
     media_used: list[str] = []
     scene_clips: list[Path] = []
     for index, scene in enumerate(scenes):

@@ -68,7 +68,13 @@ function App() {
   const [ttsProviders, setTtsProviders] = useState([]);
   const [llm, setLlm] = useState({ provider: "openrouter", api_key: "", base_url: "", model: "" });
   const [models, setModels] = useState([]);
-  const [material, setMaterial] = useState({ provider: "pexels", api_keys: "", query: "city night", aspect: "portrait" });
+  const [material, setMaterial] = useState({
+    provider: "pexels",
+    api_keys: "",
+    query: "city night",
+    aspect: "portrait",
+    use_for_generation: false,
+  });
   const [comfy, setComfy] = useState({ base_url: "http://127.0.0.1:8188", api_key: "" });
   const [tts, setTts] = useState({
     provider: "edge",
@@ -173,7 +179,17 @@ function App() {
     });
   const generateVideo = () =>
     run("video", async () => {
-      const data = await request("/video/generate", { method: "POST", body: JSON.stringify(video) });
+      const materialKeys = material.api_keys.split(/[,\n]/).map((item) => item.trim()).filter(Boolean);
+      const data = await request("/video/generate", {
+        method: "POST",
+        body: JSON.stringify({
+          ...video,
+          use_online_materials: material.use_for_generation,
+          online_material_provider: material.provider,
+          online_material_api_keys: materialKeys,
+          online_material_query: material.query || video.topic,
+        }),
+      });
       setGenerated(data);
       return { ok: data.ok, message: data.message };
     });
@@ -388,6 +404,16 @@ function App() {
               </Field>
               <Field label="Test query" help="A lightweight search validates the key and response format.">
                 <input value={material.query} onChange={(event) => setMaterial({ ...material, query: event.target.value })} />
+              </Field>
+              <Field label="Use in generator" help="When enabled and Local media is empty, Morpheus downloads free stock clips as scene backgrounds.">
+                <span className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={material.use_for_generation}
+                    onChange={(event) => setMaterial({ ...material, use_for_generation: event.target.checked })}
+                  />
+                  <span>Use Pexels/Pixabay clips for MP4</span>
+                </span>
               </Field>
             </div>
             <div className="actions">
