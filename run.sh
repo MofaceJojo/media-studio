@@ -10,6 +10,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if [[ ! -f "$ROOT_DIR/backend/.venv/bin/activate" ]]; then
+  echo "Backend virtual environment is missing. Run ./install.sh first."
+  exit 1
+fi
+
+if [[ ! -d "$ROOT_DIR/frontend/node_modules" ]]; then
+  echo "Frontend dependencies are missing. Run ./install.sh first."
+  exit 1
+fi
+
 cd "$ROOT_DIR/backend"
 source .venv/bin/activate
 uvicorn app.main:app --host 127.0.0.1 --port 8710 &

@@ -11,7 +11,7 @@ import httpx
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 
-from app.integrations.writing import video_script
+from app.integrations.writing import WritingRequest, read_source_files, run_writing_tool, video_script
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -30,6 +30,8 @@ class VideoGenerateRequest(BaseModel):
     local_voice_url: str = ""
     enable_subtitles: bool = True
     local_media_paths: str = ""
+    source_file_paths: str = ""
+    source_file_skill: str = "video_script"
 
 
 class VideoGenerateResult(BaseModel):
@@ -42,6 +44,7 @@ class VideoGenerateResult(BaseModel):
     subtitle_path: str = ""
     voice_provider: str = ""
     media_used: list[str] = Field(default_factory=list)
+    source_files_used: list[str] = Field(default_factory=list)
     script: str = ""
     scenes: list[str] = Field(default_factory=list)
 
@@ -435,7 +438,24 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
     task_dir = STORAGE_DIR / task_id
     task_dir.mkdir(parents=True, exist_ok=True)
 
-    script = payload.script.strip() or video_script(payload.topic or payload.title)
+    source_file_text = ""
+    source_files_used: list[str] = []
+    script = payload.script.strip()
+    if not script:
+        source_file_text, source_files_used = read_source_files(payload.source_file_paths)
+    if not script and source_file_text:
+        writing = run_writing_tool(
+            WritingRequest(
+                mode=payload.source_file_skill,
+                text=payload.topic,
+                tone="clean",
+                source_file_paths=payload.source_file_paths,
+            )
+        )
+        script = writing.text
+        source_files_used = writing.source_files_used
+    if not script:
+        script = video_script(payload.topic or payload.title)
     scenes = split_scenes(script)
     audio_path, voice_provider = await _create_voiceover(payload, script, task_dir)
     scene_seconds = payload.seconds_per_scene
@@ -584,6 +604,7 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
                 "subtitles": str(subtitle_file),
                 "voice_provider": voice_provider,
                 "media_used": media_used,
+                "source_files_used": source_files_used,
                 "seconds_per_scene": scene_seconds,
             },
             ensure_ascii=False,
@@ -602,6 +623,7 @@ async def generate_local_video(payload: VideoGenerateRequest) -> VideoGenerateRe
         subtitle_path=str(subtitle_file),
         voice_provider=voice_provider,
         media_used=media_used,
+        source_files_used=source_files_used,
         script=script,
         scenes=scenes,
     )

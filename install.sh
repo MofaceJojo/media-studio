@@ -17,6 +17,16 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm is required. Install Node.js 20+ first."
+  exit 1
+fi
+
+if ! "$PYTHON_BIN" --version >/dev/null 2>&1; then
+  echo "Python was not found. Set PYTHON_BIN=/path/to/python3.12 and retry."
+  exit 1
+fi
+
 cd "$ROOT_DIR/backend"
 "$PYTHON_BIN" -m venv .venv
 source .venv/bin/activate

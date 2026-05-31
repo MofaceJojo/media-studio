@@ -1,20 +1,55 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class WritingRequest(BaseModel):
     mode: str = "video_script"
-    text: str
+    text: str = ""
     tone: str = "clean"
+    source_file_paths: str = ""
 
 
 class WritingResult(BaseModel):
     ok: bool
     mode: str
     text: str
+    source_files_used: list[str] = Field(default_factory=list)
+
+
+def parse_source_file_paths(raw_paths: str) -> list[Path]:
+    paths: list[Path] = []
+    for item in re.split(r"[\n,]+", raw_paths):
+        value = item.strip().strip('"').strip("'")
+        if not value:
+            continue
+        path = Path(value).expanduser()
+        if path.exists() and path.is_file() and path.suffix.lower() in {".txt", ".md"}:
+            paths.append(path)
+    return paths
+
+
+def read_source_files(raw_paths: str, max_chars: int = 12000) -> tuple[str, list[str]]:
+    chunks: list[str] = []
+    used: list[str] = []
+    remaining = max_chars
+    for path in parse_source_file_paths(raw_paths):
+        if remaining <= 0:
+            break
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore").strip()
+        except OSError:
+            continue
+        if not text:
+            continue
+        text = text[:remaining]
+        chunks.append(f"《{path.name}》\n{text}")
+        used.append(str(path))
+        remaining -= len(text)
+    return "\n\n".join(chunks), used
 
 
 def _sentences(text: str) -> list[str]:
@@ -88,10 +123,12 @@ def video_script(text: str) -> str:
 
 
 def run_writing_tool(payload: WritingRequest) -> WritingResult:
+    file_text, source_files_used = read_source_files(payload.source_file_paths)
+    source_text = "\n\n".join(part for part in [payload.text.strip(), file_text] if part)
     if payload.mode == "polish":
-        text = polish_text(payload.text, payload.tone)
+        text = polish_text(source_text, payload.tone)
     elif payload.mode == "novel_outline":
-        text = novel_outline(payload.text)
+        text = novel_outline(source_text)
     else:
-        text = video_script(payload.text)
-    return WritingResult(ok=bool(text), mode=payload.mode, text=text)
+        text = video_script(source_text)
+    return WritingResult(ok=bool(text), mode=payload.mode, text=text, source_files_used=source_files_used)

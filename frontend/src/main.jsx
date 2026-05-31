@@ -87,12 +87,15 @@ function App() {
     local_voice_url: "http://127.0.0.1:9880",
     enable_subtitles: true,
     local_media_paths: "",
+    source_file_paths: "",
+    source_file_skill: "video_script",
   });
   const [generated, setGenerated] = useState(null);
   const [writing, setWriting] = useState({
     mode: "video_script",
     tone: "clean",
     text: "一个普通人因为一次失败，重新审视自己的选择，并慢慢找到真正适合自己的道路。",
+    source_file_paths: "",
   });
   const [writingResult, setWritingResult] = useState("");
   const [results, setResults] = useState({});
@@ -162,7 +165,11 @@ function App() {
       if (writing.mode === "video_script") {
         setVideo((current) => ({ ...current, script: data.text || current.script }));
       }
-      return { ok: data.ok, message: data.ok ? "Writing tool finished." : "No text generated." };
+      const fileCount = data.source_files_used?.length || 0;
+      return {
+        ok: data.ok,
+        message: data.ok ? `Writing tool finished${fileCount ? ` with ${fileCount} file(s).` : "."}` : "No text generated.",
+      };
     });
   const generateVideo = () =>
     run("video", async () => {
@@ -248,6 +255,20 @@ function App() {
                   placeholder="/Users/you/Videos/background.mp4"
                 />
               </Field>
+              <Field label="Text files" help="Optional. Paste local .txt or .md paths; Morpheus can turn drafts or novel fragments into scene scripts before rendering.">
+                <textarea
+                  value={video.source_file_paths}
+                  onChange={(event) => setVideo({ ...video, source_file_paths: event.target.value })}
+                  placeholder="/Users/you/Documents/story.md"
+                />
+              </Field>
+              <Field label="File skill" help="Applied when Script is empty and text files are provided.">
+                <select value={video.source_file_skill} onChange={(event) => setVideo({ ...video, source_file_skill: event.target.value })}>
+                  <option value="video_script">Make video script</option>
+                  <option value="polish">Polish into scenes</option>
+                  <option value="novel_outline">Novel outline</option>
+                </select>
+              </Field>
               <Field label="Topic" help="If script is empty, Morpheus creates a concise local script from this topic.">
                 <textarea value={video.topic} onChange={(event) => setVideo({ ...video, topic: event.target.value })} />
               </Field>
@@ -268,6 +289,7 @@ function App() {
                 </a>
                 {generated.subtitle_path ? <span className="output-note">SRT generated with the final video.</span> : null}
                 {generated.media_used?.length ? <span className="output-note">Local media: {generated.media_used.length} scene link(s).</span> : null}
+                {generated.source_files_used?.length ? <span className="output-note">Text files: {generated.source_files_used.length} loaded.</span> : null}
               </div>
             ) : null}
           </article>
@@ -294,6 +316,13 @@ function App() {
               </Field>
               <Field label="Source text" help="Paste a novel fragment, outline, rough idea, or existing script.">
                 <textarea value={writing.text} onChange={(event) => setWriting({ ...writing, text: event.target.value })} />
+              </Field>
+              <Field label="Source files" help="Optional local .txt or .md files. The selected skill reads them before generating the result.">
+                <textarea
+                  value={writing.source_file_paths}
+                  onChange={(event) => setWriting({ ...writing, source_file_paths: event.target.value })}
+                  placeholder="/Users/you/Documents/chapter-01.txt"
+                />
               </Field>
               <button onClick={runWriting} disabled={busy === "writing"}>
                 <MagicWand size={17} /> Run writing skill
