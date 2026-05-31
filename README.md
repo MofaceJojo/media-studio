@@ -12,6 +12,21 @@ This first integrated build keeps the free/local-first pieces:
 
 ## Run
 
+Quick start:
+
+```bash
+./install.sh
+./run.sh
+```
+
+Open `http://localhost:5173`.
+
+Requirements:
+
+- Python 3.12 recommended
+- Node.js 20+
+- ffmpeg available on PATH
+
 Backend:
 
 ```bash
@@ -33,6 +48,25 @@ npm run dev
 ```
 
 Open `http://localhost:5173`.
+
+## Local Generation
+
+The app can generate a basic MP4 without API keys:
+
+1. Open `Local Video Generator`.
+2. Enter a title and topic, or paste a script.
+3. Click `Generate MP4`.
+4. The generated video is saved under `backend/storage/generated` and served from `/outputs/.../final.mp4`.
+
+The first generation path is intentionally simple: text scenes are rendered to slides and combined with ffmpeg. Pexels, Pixabay, ComfyUI, LLM providers, and local voice engines remain available as integration points.
+
+## Writing Tools
+
+`Novel & Polish Lab` includes local tools for:
+
+- turning rough prose into a short-video script
+- polishing text
+- creating a compact novel outline
 
 ## Integration Notes
 

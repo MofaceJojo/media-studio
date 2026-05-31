@@ -4,3 +4,4 @@ pydantic==2.10.4
 httpx==0.28.1
 python-dotenv==1.0.1
 edge-tts==7.2.7
+pillow==11.0.0

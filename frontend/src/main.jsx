@@ -4,9 +4,12 @@ import {
   ArrowsClockwise,
   CheckCircle,
   CloudSlash,
+  DownloadSimple,
+  FileText,
   FilmSlate,
   GearSix,
   ListChecks,
+  MagicWand,
   MicrophoneStage,
   Question,
   Sparkle,
@@ -73,6 +76,20 @@ function App() {
     voice: "zh-CN-XiaoxiaoNeural",
     base_url: "http://127.0.0.1:9880",
   });
+  const [video, setVideo] = useState({
+    title: "Morpheus Video Studio",
+    topic: "普通人如何用长期主义改变人生",
+    script: "",
+    aspect: "portrait",
+    seconds_per_scene: 3.2,
+  });
+  const [generated, setGenerated] = useState(null);
+  const [writing, setWriting] = useState({
+    mode: "video_script",
+    tone: "clean",
+    text: "一个普通人因为一次失败，重新审视自己的选择，并慢慢找到真正适合自己的道路。",
+  });
+  const [writingResult, setWritingResult] = useState("");
   const [results, setResults] = useState({});
   const [busy, setBusy] = useState("");
 
@@ -133,6 +150,21 @@ function App() {
     );
   const testComfy = () => run("comfy", () => request("/comfyui/test", { method: "POST", body: JSON.stringify(comfy) }));
   const testTts = () => run("tts", () => request("/tts/test", { method: "POST", body: JSON.stringify(tts) }));
+  const runWriting = () =>
+    run("writing", async () => {
+      const data = await request("/writing/run", { method: "POST", body: JSON.stringify(writing) });
+      setWritingResult(data.text || "");
+      if (writing.mode === "video_script") {
+        setVideo((current) => ({ ...current, script: data.text || current.script }));
+      }
+      return { ok: data.ok, message: data.ok ? "Writing tool finished." : "No text generated." };
+    });
+  const generateVideo = () =>
+    run("video", async () => {
+      const data = await request("/video/generate", { method: "POST", body: JSON.stringify(video) });
+      setGenerated(data);
+      return { ok: data.ok, message: data.message };
+    });
 
   return (
     <main className="shell">
@@ -163,6 +195,79 @@ function App() {
           </div>
           <button className="primary"><FilmSlate size={18} weight="fill" /> New video</button>
         </header>
+
+        <section className="studio-grid">
+          <article className="panel compose-panel">
+            <div className="panel-title">
+              <h2>Local Video Generator</h2>
+              <Result result={results.video} />
+            </div>
+            <div className="grid two">
+              <Field label="Title" help="Used on generated slides and metadata.">
+                <input value={video.title} onChange={(event) => setVideo({ ...video, title: event.target.value })} />
+              </Field>
+              <Field label="Aspect" help="Portrait is best for short-video platforms.">
+                <select value={video.aspect} onChange={(event) => setVideo({ ...video, aspect: event.target.value })}>
+                  <option value="portrait">9:16</option>
+                  <option value="landscape">16:9</option>
+                  <option value="square">1:1</option>
+                </select>
+              </Field>
+              <Field label="Topic" help="If script is empty, Morpheus creates a concise local script from this topic.">
+                <textarea value={video.topic} onChange={(event) => setVideo({ ...video, topic: event.target.value })} />
+              </Field>
+              <Field label="Script" help="One line becomes one scene. You can paste polished text or use the writing module below.">
+                <textarea value={video.script} onChange={(event) => setVideo({ ...video, script: event.target.value })} />
+              </Field>
+            </div>
+            <div className="actions">
+              <button className="primary" onClick={generateVideo} disabled={busy === "video"}>
+                <FilmSlate size={17} weight="fill" /> Generate MP4
+              </button>
+            </div>
+            {generated?.video_url ? (
+              <div className="output-video">
+                <video src={`http://127.0.0.1:8710${generated.video_url}`} controls />
+                <a href={`http://127.0.0.1:8710${generated.video_url}`} target="_blank" rel="noreferrer">
+                  <DownloadSimple size={17} /> Open video
+                </a>
+              </div>
+            ) : null}
+          </article>
+
+          <article className="panel writing-panel">
+            <div className="panel-title">
+              <h2>Novel & Polish Lab</h2>
+              <Result result={results.writing} />
+            </div>
+            <div className="grid">
+              <Field label="Skill" help="Local writing tools for novel outlining, polishing, and turning prose into short-video scripts.">
+                <select value={writing.mode} onChange={(event) => setWriting({ ...writing, mode: event.target.value })}>
+                  <option value="video_script">Make video script</option>
+                  <option value="polish">Polish text</option>
+                  <option value="novel_outline">Novel outline</option>
+                </select>
+              </Field>
+              <Field label="Tone" help="Clean is direct, Novel is more atmospheric, Viral is punchier.">
+                <select value={writing.tone} onChange={(event) => setWriting({ ...writing, tone: event.target.value })}>
+                  <option value="clean">Clean</option>
+                  <option value="novel">Novel</option>
+                  <option value="viral">Viral</option>
+                </select>
+              </Field>
+              <Field label="Source text" help="Paste a novel fragment, outline, rough idea, or existing script.">
+                <textarea value={writing.text} onChange={(event) => setWriting({ ...writing, text: event.target.value })} />
+              </Field>
+              <button onClick={runWriting} disabled={busy === "writing"}>
+                <MagicWand size={17} /> Run writing skill
+              </button>
+              <textarea className="writing-output" value={writingResult} readOnly placeholder="Result appears here." />
+              <button onClick={() => setVideo({ ...video, script: writingResult })} disabled={!writingResult}>
+                <FileText size={17} /> Use as script
+              </button>
+            </div>
+          </article>
+        </section>
 
         <section className="matrix">
           <article className="panel llm-panel">
