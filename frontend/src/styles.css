@@ -192,6 +192,73 @@ button:disabled {
   align-items: start;
 }
 
+.settings-page {
+  display: grid;
+  gap: 14px;
+  max-width: 980px;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #e0e4eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.settings-tabs button {
+  min-height: 36px;
+  background: #fbfcfd;
+  color: #465266;
+}
+
+.settings-tabs button.active {
+  border-color: #20242b;
+  background: #20242b;
+  color: #ffffff;
+}
+
+.pipeline-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.pipeline-card {
+  min-height: 170px;
+  padding: 18px;
+  border: 1px solid #e0e4eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px -28px rgba(25, 31, 42, 0.38);
+}
+
+.pipeline-card span {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #eff7dc;
+  color: #415707;
+  font-weight: 700;
+}
+
+.pipeline-card strong {
+  display: block;
+  margin-top: 16px;
+  font-size: 17px;
+}
+
+.pipeline-card p {
+  margin: 9px 0 0;
+  color: #667085;
+  line-height: 1.48;
+  font-size: 13px;
+}
+
 .studio-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
@@ -478,6 +545,7 @@ textarea:focus {
   }
 
   .matrix,
+  .pipeline-overview,
   .studio-grid,
   .grid.two {
     grid-template-columns: 1fr;

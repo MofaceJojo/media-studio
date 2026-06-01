@@ -63,6 +63,13 @@ const VIDEO_MODES = [
   },
 ];
 
+const SETTINGS_TABS = [
+  { id: "llm", label: "Models", icon: Robot },
+  { id: "materials", label: "Video Sources", icon: PaintBrush },
+  { id: "comfy", label: "Local ComfyUI", icon: Images },
+  { id: "voice", label: "Voice", icon: MicrophoneStage },
+];
+
 const request = async (path, options = {}) => {
   const response = await fetch(`${API}${path}`, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
@@ -111,6 +118,7 @@ function App() {
   const [workflows, setWorkflows] = useState([]);
   const [ttsProviders, setTtsProviders] = useState([]);
   const [activePage, setActivePage] = useState("studio");
+  const [activeSettingsTab, setActiveSettingsTab] = useState("llm");
   const [llm, setLlm] = useState({ provider: "openrouter", api_key: "", base_url: "", model: "" });
   const [models, setModels] = useState([]);
   const [material, setMaterial] = useState({
@@ -348,19 +356,6 @@ function App() {
                   <option value="square">1:1</option>
                 </select>
               </Field>
-              <Field label="Voiceover" help="Edge TTS is free and classic. None keeps generation fully offline. Local API posts to /tts.">
-                <select value={video.voice_provider} onChange={(event) => setVideo({ ...video, voice_provider: event.target.value })}>
-                  <option value="edge">Edge TTS</option>
-                  <option value="local_api">Local Voice API</option>
-                  <option value="none">None</option>
-                </select>
-              </Field>
-              <Field label="Voice ID" help="For Edge TTS, use a voice such as zh-CN-XiaoxiaoNeural or en-US-JennyNeural.">
-                <input value={video.voice} onChange={(event) => setVideo({ ...video, voice: event.target.value })} />
-              </Field>
-              <Field label="Local Voice URL" help="For Omni Voice-style services. Morpheus sends POST /tts with text and voice.">
-                <input value={video.local_voice_url} onChange={(event) => setVideo({ ...video, local_voice_url: event.target.value })} />
-              </Field>
               <Field label="Subtitles" help="Creates a standard SRT file and burns readable captions into the generated video.">
                 <span className="checkbox-row">
                   <input
@@ -459,9 +454,45 @@ function App() {
         </section>
         ) : null}
 
-        {activePage !== "studio" ? (
-        <section className="matrix">
-          <article className={`panel llm-panel ${activePage === "settings" ? "" : "is-hidden"}`}>
+        {activePage === "pipelines" ? (
+          <section className="pipeline-overview">
+            {[
+              ["01", "Write", "小说、草稿、PDF 或主题先变成短视频脚本。"],
+              ["02", "Source", "本地素材优先，可选 Pexels / Pixabay 免费视频库。"],
+              ["03", "Voice", "Edge TTS 或本地 Voice API 生成口播；失败时静音兜底。"],
+              ["04", "Render", "ffmpeg 合成 MP4、SRT 字幕和烧录字幕画面。"],
+            ].map(([number, title, text]) => (
+              <article className="pipeline-card" key={number}>
+                <span>{number}</span>
+                <strong>{title}</strong>
+                <p>{text}</p>
+              </article>
+            ))}
+          </section>
+        ) : null}
+
+        {activePage === "settings" ? (
+        <section className="settings-page">
+          <div className="settings-tabs" role="tablist" aria-label="Settings sections">
+            {SETTINGS_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const active = activeSettingsTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  className={active ? "active" : ""}
+                  type="button"
+                  aria-selected={active}
+                  onClick={() => setActiveSettingsTab(tab.id)}
+                >
+                  <Icon size={17} weight={active ? "fill" : "regular"} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <article className={`panel ${activeSettingsTab === "llm" ? "" : "is-hidden"}`}>
             <div className="panel-title">
               <h2>LLM Provider</h2>
               <Result result={results.llm || results.models} />
@@ -489,7 +520,7 @@ function App() {
             </div>
           </article>
 
-          <article className={`panel ${activePage === "pipelines" ? "" : "is-hidden"}`}>
+          <article className={`panel ${activeSettingsTab === "materials" ? "" : "is-hidden"}`}>
             <div className="panel-title">
               <h2>Video Sources</h2>
               <Result result={results.materials} />
@@ -530,7 +561,7 @@ function App() {
             </div>
           </article>
 
-          <article className={`panel ${activePage === "pipelines" ? "" : "is-hidden"}`}>
+          <article className={`panel ${activeSettingsTab === "comfy" ? "" : "is-hidden"}`}>
             <div className="panel-title">
               <h2>Local ComfyUI</h2>
               <Result result={results.comfy} />
@@ -551,22 +582,35 @@ function App() {
             </div>
           </article>
 
-          <article className={`panel ${activePage === "pipelines" ? "" : "is-hidden"}`}>
+          <article className={`panel ${activeSettingsTab === "voice" ? "" : "is-hidden"}`}>
             <div className="panel-title">
               <h2>Voice Synthesis</h2>
               <Result result={results.tts} />
             </div>
             <div className="grid two">
+              <Field label="Video voiceover" help="Used by Generate MP4. Edge is free and classic; None stays fully offline.">
+                <select value={video.voice_provider} onChange={(event) => setVideo({ ...video, voice_provider: event.target.value })}>
+                  <option value="edge">Edge TTS</option>
+                  <option value="local_api">Local Voice API</option>
+                  <option value="none">None</option>
+                </select>
+              </Field>
               <Field label="Provider" help="Only free or local voice options are kept. Paid cloud voice services are excluded.">
                 <select value={tts.provider} onChange={(event) => setTts({ ...tts, provider: event.target.value })}>
                   {ttsProviders.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}
                 </select>
               </Field>
               <Field label="Voice" help="Edge voice id, ComfyUI workflow voice value, or a local voice identifier.">
-                <input value={tts.voice} onChange={(event) => setTts({ ...tts, voice: event.target.value })} />
+                <input value={tts.voice} onChange={(event) => {
+                  setTts({ ...tts, voice: event.target.value });
+                  setVideo({ ...video, voice: event.target.value });
+                }} />
               </Field>
               <Field label="Local API URL" help="Reserved for local voice engines such as Omni Voice. The test checks /health first, then the base URL.">
-                <input value={tts.base_url} onChange={(event) => setTts({ ...tts, base_url: event.target.value })} />
+                <input value={tts.base_url} onChange={(event) => {
+                  setTts({ ...tts, base_url: event.target.value });
+                  setVideo({ ...video, local_voice_url: event.target.value });
+                }} />
               </Field>
               <Field label="Preview text" help="The one-click test creates a short Edge TTS preview or validates the selected local voice endpoint.">
                 <textarea value={tts.text} onChange={(event) => setTts({ ...tts, text: event.target.value })} />
