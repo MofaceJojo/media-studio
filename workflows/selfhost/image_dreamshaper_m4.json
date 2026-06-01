@@ -1,0 +1,107 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "dreamshaper_8.safetensors"
+    },
+    "_meta": {
+      "title": "CheckpointLoaderSimple"
+    }
+  },
+  "2": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "text": "cinematic vertical short video frame, clear subject, high detail"
+    },
+    "_meta": {
+      "title": "$prompt.text!"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "text": "worst quality, low quality, blurry, bad face, asymmetrical face, cross-eye, deformed eyes, deformed pupils, bad anatomy, deformed body, extra limbs, missing limbs, fused limbs, bad hands, malformed hands, extra fingers, missing fingers, fused fingers, long neck, disfigured, uncanny, text, watermark, logo, cropped head"
+    },
+    "_meta": {
+      "title": "$negative_prompt.text"
+    }
+  },
+  "4": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 576,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "$width.width, $height.height"
+    }
+  },
+  "5": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "2",
+        0
+      ],
+      "negative": [
+        "3",
+        0
+      ],
+      "latent_image": [
+        "4",
+        0
+      ],
+      "seed": 123456789,
+      "steps": 24,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1
+    },
+    "_meta": {
+      "title": "$seed.seed, $steps.steps, $cfg.cfg"
+    }
+  },
+  "6": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "5",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "VAEDecode"
+    }
+  },
+  "7": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "pixelle_dreamshaper",
+      "images": [
+        "6",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "$output.image"
+    }
+  }
+}

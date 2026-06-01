@@ -1,0 +1,116 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "dreamshaper_8.safetensors"
+    },
+    "_meta": {
+      "title": "CheckpointLoaderSimple"
+    }
+  },
+  "2": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "text": "cinematic vertical short video, clear subject, high detail, dynamic motion"
+    },
+    "_meta": {
+      "title": "$prompt.text!"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "text": "worst quality, low quality, blurry, bad face, asymmetrical face, cross-eye, deformed eyes, deformed pupils, bad anatomy, deformed body, extra limbs, missing limbs, fused limbs, bad hands, malformed hands, extra fingers, missing fingers, fused fingers, long neck, disfigured, uncanny, flicker, inconsistent face, inconsistent hands, text, watermark, logo, cropped head"
+    },
+    "_meta": {
+      "title": "$negative_prompt.text"
+    }
+  },
+  "4": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 320,
+      "height": 576,
+      "batch_size": 4
+    },
+    "_meta": {
+      "title": "$width.width, $height.height"
+    }
+  },
+  "5": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "2",
+        0
+      ],
+      "negative": [
+        "3",
+        0
+      ],
+      "latent_image": [
+        "4",
+        0
+      ],
+      "seed": 123456789,
+      "steps": 6,
+      "cfg": 7,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1
+    },
+    "_meta": {
+      "title": "$seed.seed, $steps.steps, $cfg.cfg"
+    }
+  },
+  "6": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "5",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "VAEDecode"
+    }
+  },
+  "7": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": [
+        "6",
+        0
+      ],
+      "frame_rate": 4,
+      "loop_count": 0,
+      "filename_prefix": "pixelle_dreamshaper_video_fast",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 22,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": true,
+      "save_output": true
+    },
+    "_meta": {
+      "title": "$output.video"
+    }
+  }
+}

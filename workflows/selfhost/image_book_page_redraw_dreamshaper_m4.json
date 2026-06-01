@@ -1,0 +1,137 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "dreamshaper_8.safetensors"
+    },
+    "_meta": {
+      "title": "CheckpointLoaderSimple"
+    }
+  },
+  "2": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "page.png"
+    },
+    "_meta": {
+      "title": "$~image.image!"
+    }
+  },
+  "3": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "2",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": 1024,
+      "height": 768,
+      "crop": "center"
+    },
+    "_meta": {
+      "title": "$width.width, $height.height"
+    }
+  },
+  "4": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "3",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "VAEEncode"
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "text": "beautiful modern children's bedtime picture book illustration, soft moonlit colors, cozy room, charming hand-painted style, clean composition, high detail, warm gentle lighting"
+    },
+    "_meta": {
+      "title": "$prompt.text!"
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "text": "photorealistic, scary, ugly, distorted, deformed, bad anatomy, bad face, asymmetrical face, deformed eyes, extra limbs, missing limbs, bad hands, extra fingers, missing fingers, fused fingers, watermark, logo, caption text, OCR text, blurry, low quality, noisy"
+    },
+    "_meta": {
+      "title": "$negative_prompt.text"
+    }
+  },
+  "7": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "5",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "latent_image": [
+        "4",
+        0
+      ],
+      "seed": 123456789,
+      "steps": 18,
+      "cfg": 7,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.68
+    },
+    "_meta": {
+      "title": "$seed.seed, $steps.steps, $cfg.cfg, $denoise.denoise"
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "VAEDecode"
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "pixelle_book_redraw",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "$output.image"
+    }
+  }
+}
