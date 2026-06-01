@@ -75,19 +75,29 @@ nav {
   gap: 6px;
 }
 
-nav a {
+nav button {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
   min-height: 42px;
+  width: 100%;
   padding: 0 12px;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
   color: #b9c0ca;
+  cursor: pointer;
 }
 
-nav a.active {
+nav button.active {
   background: #242832;
   color: #ffffff;
+}
+
+nav button:hover {
+  border-color: transparent;
+  background: #20242d;
 }
 
 .no-cloud {
@@ -200,6 +210,10 @@ button:disabled {
 
 .llm-panel {
   grid-row: span 2;
+}
+
+.is-hidden {
+  display: none;
 }
 
 .panel-title {

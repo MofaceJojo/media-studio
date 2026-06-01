@@ -110,6 +110,7 @@ function App() {
   const [providers, setProviders] = useState([]);
   const [workflows, setWorkflows] = useState([]);
   const [ttsProviders, setTtsProviders] = useState([]);
+  const [activePage, setActivePage] = useState("studio");
   const [llm, setLlm] = useState({ provider: "openrouter", api_key: "", base_url: "", model: "" });
   const [models, setModels] = useState([]);
   const [material, setMaterial] = useState({
@@ -240,6 +241,28 @@ function App() {
       return { ok: data.ok, message: data.message };
     });
 
+  const pageMeta = {
+    studio: {
+      eyebrow: "Create video",
+      title: "Studio",
+      action: "New video",
+      icon: FilmSlate,
+    },
+    pipelines: {
+      eyebrow: "Materials and local engines",
+      title: "Pipelines",
+      action: "Back to Studio",
+      icon: ListChecks,
+    },
+    settings: {
+      eyebrow: "Connections and defaults",
+      title: "Settings",
+      action: "Back to Studio",
+      icon: GearSix,
+    },
+  }[activePage];
+  const HeaderIcon = pageMeta.icon;
+
   return (
     <main className="shell">
       <aside className="rail">
@@ -251,9 +274,15 @@ function App() {
           </div>
         </div>
         <nav>
-          <a className="active"><Sparkle size={18} /> Studio</a>
-          <a><ListChecks size={18} /> Pipelines</a>
-          <a><GearSix size={18} /> Settings</a>
+          <button className={activePage === "studio" ? "active" : ""} onClick={() => setActivePage("studio")}>
+            <Sparkle size={18} /> Studio
+          </button>
+          <button className={activePage === "pipelines" ? "active" : ""} onClick={() => setActivePage("pipelines")}>
+            <ListChecks size={18} /> Pipelines
+          </button>
+          <button className={activePage === "settings" ? "active" : ""} onClick={() => setActivePage("settings")}>
+            <GearSix size={18} /> Settings
+          </button>
         </nav>
         <div className="no-cloud">
           <CloudSlash size={20} />
@@ -264,12 +293,15 @@ function App() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Unified short-video engine</p>
-            <h1>Morpheus Video Studio</h1>
+            <p className="eyebrow">{pageMeta.eyebrow}</p>
+            <h1>{pageMeta.title}</h1>
           </div>
-          <button className="primary"><FilmSlate size={18} weight="fill" /> New video</button>
+          <button className="primary" onClick={() => setActivePage("studio")}>
+            <HeaderIcon size={18} weight="fill" /> {pageMeta.action}
+          </button>
         </header>
 
+        {activePage === "studio" ? (
         <section className="studio-grid">
           <article className="panel compose-panel">
             <div className="panel-title">
@@ -425,9 +457,11 @@ function App() {
             </div>
           </article>
         </section>
+        ) : null}
 
+        {activePage !== "studio" ? (
         <section className="matrix">
-          <article className="panel llm-panel">
+          <article className={`panel llm-panel ${activePage === "settings" ? "" : "is-hidden"}`}>
             <div className="panel-title">
               <h2>LLM Provider</h2>
               <Result result={results.llm || results.models} />
@@ -455,7 +489,7 @@ function App() {
             </div>
           </article>
 
-          <article className="panel">
+          <article className={`panel ${activePage === "pipelines" ? "" : "is-hidden"}`}>
             <div className="panel-title">
               <h2>Video Sources</h2>
               <Result result={results.materials} />
@@ -496,7 +530,7 @@ function App() {
             </div>
           </article>
 
-          <article className="panel">
+          <article className={`panel ${activePage === "pipelines" ? "" : "is-hidden"}`}>
             <div className="panel-title">
               <h2>Local ComfyUI</h2>
               <Result result={results.comfy} />
@@ -517,7 +551,7 @@ function App() {
             </div>
           </article>
 
-          <article className="panel">
+          <article className={`panel ${activePage === "pipelines" ? "" : "is-hidden"}`}>
             <div className="panel-title">
               <h2>Voice Synthesis</h2>
               <Result result={results.tts} />
@@ -547,6 +581,7 @@ function App() {
             </div>
           </article>
         </section>
+        ) : null}
       </section>
     </main>
   );
