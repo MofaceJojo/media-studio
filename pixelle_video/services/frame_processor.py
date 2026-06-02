@@ -207,7 +207,8 @@ class FrameProcessor:
         # Determine media type based on workflow
         # video_ prefix in workflow name indicates video generation
         workflow_name = config.media_workflow or ""
-        is_video_workflow = "video_" in workflow_name.lower()
+        is_stock_workflow = workflow_name.startswith("stock/")
+        is_video_workflow = is_stock_workflow or "video_" in workflow_name.lower()
         media_type = "video" if is_video_workflow else "image"
         
         logger.debug(f"  → Media type: {media_type} (workflow: {workflow_name})")
@@ -424,7 +425,14 @@ class FrameProcessor:
     ) -> str:
         """Download media (image or video) from URL to local file"""
         from pixelle_video.utils.os_util import get_task_frame_path
+        from pathlib import Path
+        import shutil
         output_path = get_task_frame_path(task_id, frame_index, media_type)
+
+        local_source = Path(url)
+        if local_source.exists():
+            shutil.copy2(local_source, output_path)
+            return output_path
         
         timeout = httpx.Timeout(connect=10.0, read=60, write=60, pool=60)
         async with httpx.AsyncClient(timeout=timeout) as client:

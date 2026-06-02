@@ -4,6 +4,8 @@ chcp 65001 >nul 2>&1
 echo 🚀 Starting Pixelle-Video Web UI...
 echo.
 
+set "PATH=%~dp0tools\ffmpeg\bin;%PATH%"
+
 uv run streamlit run web/app.py
 
 if errorlevel 1 (

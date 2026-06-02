@@ -798,6 +798,24 @@ def render_style_config(pixelle_video):
                 else:
                     st.markdown(tr("style.workflow_how"))
         
+            media_strategy_options = {
+                "stock_first": "素材优先 + Comfy 辅助",
+                "stock_turbo": "Turbo 极速素材",
+                "comfy_first": "Comfy 优先",
+            }
+            media_strategy = st.radio(
+                "媒体生成策略",
+                options=list(media_strategy_options.keys()),
+                format_func=lambda key: media_strategy_options[key],
+                index=0,
+                horizontal=False,
+                help=(
+                    "推荐使用素材优先：先用 Pexels + Pixabay，素材失败时再由 ComfyUI 辅助。"
+                    "Turbo 会跳过视觉提示词生成，速度最快但匹配会更泛化。"
+                ),
+                key="media_generation_strategy"
+            )
+
             # Get available workflows and filter by template type
             all_workflows = pixelle_video.media.list_workflows()
             
@@ -840,11 +858,23 @@ def render_style_config(pixelle_video):
                 workflow_key = workflow_keys[workflow_selected_index]
             else:
                 workflow_key = "selfhost/image_dreamshaper_m4.json"
+
+            if media_strategy in ("stock_first", "stock_turbo"):
+                workflow_key = "stock/comfy" if media_strategy == "stock_first" else "stock/turbo"
+                stock_config = config_manager.get_stock_materials_config()
+                enabled_stock_sources = [
+                    name for name in ("Pexels", "Pixabay")
+                    if stock_config.get(f"{name.lower()}_api_key", "").strip()
+                ]
+                if enabled_stock_sources:
+                    st.caption(f"素材源：全部（{', '.join(enabled_stock_sources)}）")
+                else:
+                    st.warning("已选择素材策略，但还没有配置 Pexels 或 Pixabay API Key。")
             
             # Check and warn for selfhost media workflow (auto popup if not confirmed)
             check_and_warn_selfhost_workflow(workflow_key)
 
-            if workflow_key.endswith("video_dreamshaper_m4_fast.json"):
+            if media_strategy == "comfy_first" and workflow_key.endswith("video_dreamshaper_m4_fast.json"):
                 st.warning(
                     "当前为「快速拼帧」视频工作流，画面容易闪烁、人脸变形。"
                     "若效果诡异，请改用 selfhost/video_dreamshaper_m4.json，或分镜选「生成插图」。"
@@ -855,7 +885,8 @@ def render_style_config(pixelle_video):
                 if comfy_ok:
                     st.caption(comfy_msg)
                 else:
-                    st.error(comfy_msg)
+                    st.warning(f"{comfy_msg} 将自动改用全部素材源（Pexels + Pixabay）。")
+                    workflow_key = "stock/all"
         
             # Get media size from template
             media_width = st.session_state.get('template_media_width')
@@ -920,13 +951,14 @@ def render_style_config(pixelle_video):
                                 height=int(media_height)
                             ))
                             preview_media_path = media_result.url
+                            preview_media_type = media_result.media_type
                         
                             # Display preview (support both URL and local path)
                             if preview_media_path:
                                 success_text = tr("style.video_preview_success") if template_media_type == "video" else tr("style.preview_success")
                                 st.success(success_text)
                             
-                                if template_media_type == "video":
+                                if preview_media_type == "video":
                                     # Display video
                                     st.video(preview_media_path)
                                 else:
@@ -980,6 +1012,7 @@ def render_style_config(pixelle_video):
         "frame_template": frame_template,
         "template_params": custom_values_for_video if custom_values_for_video else None,
         "media_workflow": workflow_key,
+        "media_strategy": media_strategy if template_requires_media else None,
         "prompt_prefix": prompt_prefix if prompt_prefix else "",
         "media_width": media_width,
         "media_height": media_height

@@ -153,6 +153,9 @@ class StandardPipeline(LinearVideoPipeline):
 
     async def plan_visuals(self, ctx: PipelineContext):
         """Step 4: Generate image prompts or visual descriptions."""
+        media_workflow = ctx.params.get("media_workflow") or ""
+        media_strategy = ctx.params.get("media_strategy", "")
+
         # Detect template type to determine if media generation is needed
         frame_template = (
             ctx.params.get("frame_template")
@@ -172,8 +175,18 @@ class StandardPipeline(LinearVideoPipeline):
             logger.info(f"⚡ Static template - skipping media generation pipeline")
             logger.info(f"   💡 Benefits: Faster generation + Lower cost + No ComfyUI dependency")
         
-        # Only generate image prompts if template requires media
+        # Turbo stock mode follows MoneyPrinterTurbo's material-first idea:
+        # avoid extra visual-prompt LLM calls and search stock videos from the
+        # narration/title directly.
         if template_requires_media:
+            if media_workflow == "stock/turbo" or media_strategy == "stock_turbo":
+                ctx.image_prompts = [
+                    f"{ctx.title}. {narration}".strip(". ")
+                    for narration in ctx.narrations
+                ]
+                logger.info("⚡ Turbo stock mode - using narrations as stock material queries")
+                return
+
             self._report_progress(ctx.progress_callback, "generating_image_prompts", 0.15)
             
             prompt_prefix = ctx.params.get("prompt_prefix")

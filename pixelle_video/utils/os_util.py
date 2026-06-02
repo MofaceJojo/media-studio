@@ -44,6 +44,33 @@ def get_pixelle_video_root_path() -> str:
     return str(Path.cwd())
 
 
+def ensure_local_ffmpeg_on_path() -> Optional[str]:
+    """
+    Add bundled/project-local FFmpeg to PATH when available.
+
+    Windows one-click and local developer setups may place ffmpeg.exe under
+    tools/ffmpeg/bin without adding it to the system PATH.
+    """
+    candidates = [
+        Path(get_pixelle_video_root_path()) / "tools" / "ffmpeg" / "bin",
+        Path.cwd() / "tools" / "ffmpeg" / "bin",
+    ]
+
+    for bin_dir in candidates:
+        ffmpeg_exe = bin_dir / ("ffmpeg.exe" if os.name == "nt" else "ffmpeg")
+        if ffmpeg_exe.exists():
+            bin_path = str(bin_dir.resolve())
+            path_parts = os.environ.get("PATH", "").split(os.pathsep)
+            if bin_path not in path_parts:
+                os.environ["PATH"] = bin_path + os.pathsep + os.environ.get("PATH", "")
+            return bin_path
+
+    return None
+
+
+ensure_local_ffmpeg_on_path()
+
+
 def ensure_pixelle_video_root_path() -> str:
     """
     Ensure Morpheus Video Studio root path exists and return the path

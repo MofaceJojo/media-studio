@@ -63,7 +63,13 @@ def render_single_output(pixelle_video, video_params):
     frame_template = video_params.get("frame_template")
     custom_values_for_video = video_params.get("template_params", {})
     workflow_key = video_params.get("media_workflow")
+    media_strategy = video_params.get("media_strategy")
     prompt_prefix = video_params.get("prompt_prefix", "")
+
+    if not text and "quick_create_text_input" in st.session_state:
+        text = st.session_state.get("quick_create_text_input", "")
+    if not title and "quick_create_title_input" in st.session_state:
+        title = st.session_state.get("quick_create_title_input")
     
     with st.container(border=True):
         st.markdown(f"**{tr('section.video_generation')}**")
@@ -96,8 +102,8 @@ def render_single_output(pixelle_video, video_params):
                 comfy_url = config_manager.get_comfyui_config().get("comfyui_url", "http://127.0.0.1:8188")
                 comfy_ok, comfy_msg = check_comfyui_health(comfy_url)
                 if not comfy_ok:
-                    st.error(comfy_msg)
-                    st.stop()
+                    st.warning(f"{comfy_msg} 将自动改用全部素材源（Pexels + Pixabay）。")
+                    workflow_key = "stock/all"
             
             # Show progress
             progress_bar = st.progress(0)
@@ -150,6 +156,7 @@ def render_single_output(pixelle_video, video_params):
                     "n_scenes": n_scenes,
                     "split_mode": split_mode,
                     "media_workflow": workflow_key,
+                    "media_strategy": media_strategy,
                     "frame_template": frame_template,
                     "prompt_prefix": prompt_prefix,
                     "bgm_path": bgm_path,

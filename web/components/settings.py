@@ -17,6 +17,7 @@ System settings component for web UI
 import streamlit as st
 
 from web.i18n import tr
+from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import safe_rerun
 from pixelle_video.config import config_manager
 
@@ -286,6 +287,49 @@ def render_advanced_settings():
                     help="用于 Pixabay 视频素材搜索与下载。",
                     key="stock_pixabay_api_key_input"
                 )
+
+            _, pexels_test_col, pixabay_test_col = st.columns([1, 1.4, 1.4])
+            with pexels_test_col:
+                if st.button("测试 Pexels", key="test_pexels_api_key", use_container_width=True):
+                    if not stock_pexels_api_key.strip():
+                        st.warning("请先填写 Pexels API Key。")
+                    else:
+                        try:
+                            from pixelle_video.services.moneyprinter_tools import search_stock_materials
+                            with st.spinner("正在测试 Pexels..."):
+                                items = run_async(
+                                    search_stock_materials(
+                                        "pexels",
+                                        stock_pexels_api_key.strip(),
+                                        "city night",
+                                        "portrait",
+                                        4,
+                                    )
+                                )
+                            st.success(f"Pexels 可用，返回 {len(items)} 条素材。")
+                        except Exception as e:
+                            st.error(f"Pexels 测试失败：{str(e)}")
+
+            with pixabay_test_col:
+                if st.button("测试 Pixabay", key="test_pixabay_api_key", use_container_width=True):
+                    if not stock_pixabay_api_key.strip():
+                        st.warning("请先填写 Pixabay API Key。")
+                    else:
+                        try:
+                            from pixelle_video.services.moneyprinter_tools import search_stock_materials
+                            with st.spinner("正在测试 Pixabay..."):
+                                items = run_async(
+                                    search_stock_materials(
+                                        "pixabay",
+                                        stock_pixabay_api_key.strip(),
+                                        "city night",
+                                        "portrait",
+                                        4,
+                                    )
+                                )
+                            st.success(f"Pixabay 可用，返回 {len(items)} 条素材。")
+                        except Exception as e:
+                            st.error(f"Pixabay 测试失败：{str(e)}")
         
         # ====================================================================
         # Action Buttons (full width at bottom)

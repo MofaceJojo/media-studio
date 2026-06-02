@@ -343,7 +343,17 @@ async def search_stock_materials(
             response.raise_for_status()
         items = []
         for video in response.json().get("videos", []):
-            files = sorted(video.get("video_files", []), key=lambda f: f.get("width", 0), reverse=True)
+            files = [
+                item for item in video.get("video_files", [])
+                if item.get("link") and str(item.get("file_type", "")).lower().endswith("mp4")
+            ]
+            files = sorted(
+                files,
+                key=lambda f: (
+                    max(f.get("width", 0), f.get("height", 0)) > 1920,
+                    abs(max(f.get("width", 0), f.get("height", 0)) - 1280),
+                ),
+            )
             if not files:
                 continue
             best = files[0]
@@ -357,7 +367,7 @@ async def search_stock_materials(
     items = []
     for video in response.json().get("hits", []):
         variants = video.get("videos", {})
-        best = variants.get("large") or variants.get("medium") or variants.get("small") or variants.get("tiny")
+        best = variants.get("medium") or variants.get("small") or variants.get("large") or variants.get("tiny")
         if best:
             items.append(StockMaterial("pixabay", video.get("pageURL", "Pixabay video"), best["url"], video.get("duration", 0), best.get("width", 0), best.get("height", 0)))
     return items
@@ -366,12 +376,20 @@ async def search_stock_materials(
 async def download_material(url: str, provider: str = "stock") -> Path:
     MATERIAL_DIR.mkdir(parents=True, exist_ok=True)
     target = MATERIAL_DIR / f"{provider}-{uuid.uuid4().hex[:10]}.mp4"
-    async with httpx.AsyncClient(timeout=90, follow_redirects=True, verify=True) as client:
-        async with client.stream("GET", url) as response:
-            response.raise_for_status()
-            with target.open("wb") as file:
-                async for chunk in response.aiter_bytes(1024 * 256):
-                    file.write(chunk)
+    temp_target = target.with_suffix(".part")
+    try:
+        async with httpx.AsyncClient(timeout=90, follow_redirects=True, verify=True) as client:
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                with temp_target.open("wb") as file:
+                    async for chunk in response.aiter_bytes(1024 * 256):
+                        file.write(chunk)
+        if temp_target.stat().st_size <= 0:
+            raise RuntimeError("Downloaded stock material is empty.")
+        temp_target.replace(target)
+    except Exception:
+        temp_target.unlink(missing_ok=True)
+        raise
     return target
 
 

@@ -24,6 +24,9 @@ from loguru import logger
 
 from pixelle_video.services.comfy_base_service import ComfyBaseService
 from pixelle_video.models.media import MediaResult
+from pixelle_video.config import config_manager
+from pixelle_video.services.moneyprinter_tools import download_material, search_stock_materials
+from pixelle_video.utils.comfyui_util import check_comfyui_health
 
 
 DEFAULT_NEGATIVE_PROMPT = (
@@ -203,6 +206,24 @@ class MediaService(ComfyBaseService):
                 comfyui_url="http://192.168.1.100:8188"
             )
         """
+        if workflow and workflow.startswith("stock/"):
+            provider = workflow.split("/", 1)[1] or "all"
+            try:
+                return await self._generate_from_stock_materials(
+                    prompt=prompt,
+                    provider="all" if provider in ("turbo", "comfy") else provider,
+                    width=width,
+                    height=height,
+                )
+            except Exception:
+                if provider != "comfy":
+                    raise
+                logger.warning("Stock materials failed; trying ComfyUI as assist fallback")
+                fallback_workflow = self._default_selfhost_workflow(media_type)
+                if not fallback_workflow:
+                    raise
+                workflow = fallback_workflow
+
         # 1. Resolve workflow (returns structured info)
         workflow_info = self._resolve_workflow(workflow=workflow)
         
@@ -235,6 +256,19 @@ class MediaService(ComfyBaseService):
         
         # 4. Execute workflow using shared ComfyKit instance from core
         try:
+            if workflow_info["source"] == "selfhost":
+                comfy_config = self.core.config.get("comfyui", {}) if self.core else {}
+                health_url = comfyui_url or comfy_config.get("comfyui_url", "http://127.0.0.1:8188")
+                comfy_ok, comfy_msg = check_comfyui_health(health_url, timeout=2.0)
+                if not comfy_ok:
+                    logger.warning(f"{comfy_msg}; falling back to stock materials")
+                    return await self._generate_from_stock_materials(
+                        prompt=prompt,
+                        provider="all",
+                        width=width,
+                        height=height,
+                    )
+
             # Get shared ComfyKit instance (lazy initialization + config hot-reload)
             kit = await self.core._get_or_create_comfykit()
             
@@ -292,4 +326,104 @@ class MediaService(ComfyBaseService):
         
         except Exception as e:
             logger.error(f"Media generation error: {e}")
+            if workflow_info["source"] == "selfhost":
+                logger.warning("Falling back to stock materials after ComfyUI media generation error")
+                return await self._generate_from_stock_materials(
+                    prompt=prompt,
+                    provider="all",
+                    width=width,
+                    height=height,
+                )
             raise
+
+    async def _generate_from_stock_materials(
+        self,
+        prompt: str,
+        provider: str = "all",
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ) -> MediaResult:
+        config_manager.reload()
+        stock_config = config_manager.get_stock_materials_config()
+        configured_providers = [
+            name for name in ("pexels", "pixabay")
+            if stock_config.get(f"{name}_api_key", "").strip()
+        ]
+        if provider == "all":
+            providers = configured_providers
+        else:
+            providers = [provider] if provider in configured_providers else []
+
+        if not providers:
+            raise RuntimeError("ComfyUI 不可用，且未配置 Pexels/Pixabay API Key，无法使用素材兜底。")
+
+        orientation = "portrait"
+        if width and height:
+            if width > height:
+                orientation = "landscape"
+            elif width == height:
+                orientation = "square"
+
+        primary_query = " ".join(prompt.split()[:12]) or "background video"
+        if len(primary_query) > 120 or not any(ch.isascii() and ch.isalpha() for ch in primary_query):
+            primary_query = "cinematic background video"
+        fallback_queries = [
+            "cinematic background video",
+            "city night",
+            "nature landscape",
+            "people lifestyle",
+            "abstract background",
+        ]
+        queries = []
+        for query in [primary_query, *fallback_queries]:
+            if query and query not in queries:
+                queries.append(query)
+
+        candidates = []
+        for query in queries:
+            logger.info(f"Searching stock materials ({', '.join(providers)}) for: {query}")
+            for provider_name in providers:
+                api_key = stock_config.get(f"{provider_name}_api_key", "").strip()
+                try:
+                    candidates.extend(
+                        await search_stock_materials(provider_name, api_key, query, orientation, per_page=4)
+                    )
+                except Exception as exc:
+                    logger.warning(f"Stock material search failed for {provider_name}: {exc}")
+            if candidates:
+                break
+
+        if not candidates:
+            raise RuntimeError("ComfyUI 不可用，且 Pexels/Pixabay 没有返回可用素材。")
+
+        last_download_error = None
+        for material in candidates:
+            try:
+                local_path = await download_material(material.url, material.provider)
+                logger.info(f"Using stock material fallback: {local_path}")
+                return MediaResult(media_type="video", url=str(local_path), duration=material.duration or None)
+            except Exception as exc:
+                last_download_error = exc
+                logger.warning(f"Stock material download failed for {material.provider}: {exc}")
+
+        raise RuntimeError(f"Pexels/Pixabay 返回了素材，但下载均失败：{last_download_error}")
+
+    def _default_selfhost_workflow(self, media_type: str) -> Optional[str]:
+        comfy_config = self.core.config.get("comfyui", {}) if self.core else {}
+        media_config_key = "video" if media_type == "video" else "image"
+        workflow = comfy_config.get(media_config_key, {}).get("default_workflow")
+        if not workflow:
+            workflow = (
+                "selfhost/video_dreamshaper_m4.json"
+                if media_type == "video"
+                else "selfhost/image_dreamshaper_m4.json"
+            )
+        if not str(workflow).startswith("selfhost/"):
+            workflow = f"selfhost/{workflow}"
+
+        comfy_url = comfy_config.get("comfyui_url", "http://127.0.0.1:8188")
+        comfy_ok, comfy_msg = check_comfyui_health(comfy_url, timeout=2.0)
+        if not comfy_ok:
+            logger.warning(f"{comfy_msg}; ComfyUI assist fallback skipped")
+            return None
+        return workflow

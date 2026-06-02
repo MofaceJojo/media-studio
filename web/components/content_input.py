@@ -56,7 +56,8 @@ def render_content_input():
                 tr("input.text"),
                 placeholder=text_placeholder,
                 height=text_height,
-                help=text_help
+                help=text_help,
+                key="quick_create_text_input"
             )
             
             # Split mode selector (only show in fixed mode)
@@ -80,7 +81,8 @@ def render_content_input():
             title = st.text_input(
                 tr("input.title"),
                 placeholder=tr("input.title_placeholder"),
-                help=tr("input.title_help")
+                help=tr("input.title_help"),
+                key="quick_create_title_input"
             )
             
             # Number of scenes (only show in generate mode)

@@ -45,15 +45,7 @@ def check_and_warn_selfhost_workflow(workflow_path: str):
     Args:
         workflow_path: The workflow path (e.g., "selfhost/image_flux.json")
     """
-    if not workflow_path:
-        return
-    
-    # Check if this is a transition TO selfhost
-    is_selfhost = workflow_path.startswith("selfhost/")
-    
-    # Only show alert when transitioning TO selfhost
-    if is_selfhost:
-        _show_js_alert(workflow_path)
+    return
 
 
 def _show_js_alert(workflow_path: str):

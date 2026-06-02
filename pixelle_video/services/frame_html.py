@@ -329,9 +329,20 @@ class HTMLFrameGenerator:
             cls._playwright = await async_playwright().start()
             chrome_path = os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
             if not chrome_path:
-                default_chrome = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
-                if default_chrome.exists():
-                    chrome_path = str(default_chrome)
+                browser_candidates = [
+                    Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+                    Path(os.environ.get("PROGRAMFILES", "")) / "Google/Chrome/Application/chrome.exe",
+                    Path(os.environ.get("PROGRAMFILES(X86)", "")) / "Google/Chrome/Application/chrome.exe",
+                    Path(os.environ.get("LOCALAPPDATA", "")) / "Google/Chrome/Application/chrome.exe",
+                    Path(os.environ.get("PROGRAMFILES", "")) / "Microsoft/Edge/Application/msedge.exe",
+                    Path(os.environ.get("PROGRAMFILES(X86)", "")) / "Microsoft/Edge/Application/msedge.exe",
+                    Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/Edge/Application/msedge.exe",
+                ]
+                for browser_path in browser_candidates:
+                    if browser_path.exists():
+                        chrome_path = str(browser_path)
+                        logger.info(f"Using system browser for HTML rendering: {chrome_path}")
+                        break
 
             launch_options = {
                 "args": [
