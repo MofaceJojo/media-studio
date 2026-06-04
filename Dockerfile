@@ -1,4 +1,4 @@
-# Pixelle-Video Docker Image
+# Morpheus Video Studio Docker Image
 # Based on Python 3.11 slim for smaller image size
 
 FROM python:3.11-slim
@@ -39,9 +39,9 @@ ENV PATH="/root/.local/bin:$PATH"
 RUN uv --version
 
 # Copy dependency files and source code for building
-# Note: pixelle_video is needed for hatchling to build the package
+# Note: morpheus_video_studio is needed for hatchling to build the package
 COPY pyproject.toml uv.lock README.md ./
-COPY pixelle_video ./pixelle_video
+COPY morpheus_video_studio ./morpheus_video_studio
 
 # Create virtual environment and install dependencies
 # Use -i flag to specify mirror when USE_CN_MIRROR=true

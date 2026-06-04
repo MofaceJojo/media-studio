@@ -19,7 +19,7 @@ import streamlit as st
 from web.i18n import tr
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import safe_rerun
-from pixelle_video.config import config_manager
+from morpheus_video_studio.config import config_manager
 
 
 def render_advanced_settings():
@@ -40,7 +40,7 @@ def render_advanced_settings():
                 st.markdown(f"**{tr('settings.llm.title')}**")
                 
                 # Quick preset selection
-                from pixelle_video.llm_presets import get_preset_names, get_preset, find_preset_by_base_url_and_model
+                from morpheus_video_studio.llm_presets import get_preset_names, get_preset, find_preset_by_base_url_and_model
                 
                 # Custom at the end
                 preset_names = get_preset_names() + ["Custom"]
@@ -165,7 +165,7 @@ def render_advanced_settings():
                 if load_clicked:
                     if llm_api_key and llm_base_url:
                         try:
-                            from pixelle_video.utils.llm_util import fetch_available_models
+                            from morpheus_video_studio.utils.llm_util import fetch_available_models
                             with st.spinner(tr("settings.llm.loading_models")):
                                 models = fetch_available_models(llm_api_key, llm_base_url)
                                 st.session_state.llm_loaded_models = models
@@ -180,7 +180,7 @@ def render_advanced_settings():
                 if test_clicked:
                     if llm_api_key and llm_base_url:
                         try:
-                            from pixelle_video.utils.llm_util import test_llm_connection
+                            from morpheus_video_studio.utils.llm_util import test_llm_connection
                             with st.spinner(tr("settings.llm.loading_models")):
                                 success, message, model_count = test_llm_connection(llm_api_key, llm_base_url)
                                 if success:
@@ -295,7 +295,7 @@ def render_advanced_settings():
                         st.warning("请先填写 Pexels API Key。")
                     else:
                         try:
-                            from pixelle_video.services.moneyprinter_tools import search_stock_materials
+                            from morpheus_video_studio.services.moneyprinter_tools import search_stock_materials
                             with st.spinner("正在测试 Pexels..."):
                                 items = run_async(
                                     search_stock_materials(
@@ -316,7 +316,7 @@ def render_advanced_settings():
                         st.warning("请先填写 Pixabay API Key。")
                     else:
                         try:
-                            from pixelle_video.services.moneyprinter_tools import search_stock_materials
+                            from morpheus_video_studio.services.moneyprinter_tools import search_stock_materials
                             with st.spinner("正在测试 Pixabay..."):
                                 items = run_async(
                                     search_stock_materials(
@@ -368,8 +368,8 @@ def render_advanced_settings():
         with col2:
             if st.button(tr("btn.reset_config"), use_container_width=True, key="reset_config_btn"):
                 # Reset to default
-                from pixelle_video.config.schema import PixelleVideoConfig
-                config_manager.config = PixelleVideoConfig()
+                from morpheus_video_studio.config.schema import MorpheusVideoStudioConfig
+                config_manager.config = MorpheusVideoStudioConfig()
                 config_manager.save()
                 st.success(tr("status.config_reset"))
                 safe_rerun()

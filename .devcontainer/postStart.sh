@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[devcontainer] postStart: launching Pixelle-Video Web UI in background..."
-cd /workspaces/Pixelle-Video
+echo "[devcontainer] postStart: launching Morpheus Video Studio Web UI in background..."
+cd /workspaces/Morpheus Video Studio
 
 # Set Streamlit config for headless mode and proper port binding
 export STREAMLIT_SERVER_PORT=8501
@@ -12,30 +12,30 @@ export STREAMLIT_LOGGER_LEVEL=info
 export UV_LINK_MODE=copy
 
 # Start the web UI in background so the forwarded port is ready
-nohup bash start_web.sh > /tmp/pixelle_streamlit.log 2>&1 &
+nohup bash start_web.sh > /tmp/morpheus_streamlit.log 2>&1 &
 WEB_PID=$!
-echo "[devcontainer] Streamlit started with PID $WEB_PID (logs: /tmp/pixelle_streamlit.log)"
+echo "[devcontainer] Streamlit started with PID $WEB_PID (logs: /tmp/morpheus_streamlit.log)"
 
 # Wait briefly for startup and show success message
 sleep 3
 if ps -p $WEB_PID > /dev/null 2>&1; then
     echo ""
-    echo "✅ Pixelle-Video Web UI is launching on port 8501"
+    echo "✅ Morpheus Video Studio Web UI is launching on port 8501"
     echo "🌐 The URL will be available shortly (usually within 5-10 seconds)"
     echo ""
 else
     echo ""
-    echo "⚠️ Warning: Process may have exited. Check logs with: tail -f /tmp/pixelle_streamlit.log"
+    echo "⚠️ Warning: Process may have exited. Check logs with: tail -f /tmp/morpheus_streamlit.log"
     echo ""
 fi
 
 echo "Common commands:"
 echo "1. View logs:"
-echo "   tail -f /tmp/pixelle_streamlit.log"
+echo "   tail -f /tmp/morpheus_streamlit.log"
 echo "2. Stop service:"
 echo "   pkill -f 'streamlit run web/app.py'"
 echo "3. Restart service:"
-echo "   pkill -f 'streamlit run web/app.py' && nohup bash start_web.sh > /tmp/pixelle_streamlit.log 2>&1 &"
+echo "   pkill -f 'streamlit run web/app.py' && nohup bash start_web.sh > /tmp/morpheus_streamlit.log 2>&1 &"
 echo "4. Check port usage:"
 echo "   lsof -i:8501"
 echo "5. View processes:"

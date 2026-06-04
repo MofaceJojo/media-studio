@@ -100,7 +100,7 @@
       ],
       "frame_rate": 4,
       "loop_count": 0,
-      "filename_prefix": "pixelle_dreamshaper_video_fast",
+      "filename_prefix": "morpheus_dreamshaper_video_fast",
       "format": "video/h264-mp4",
       "pix_fmt": "yuv420p",
       "crf": 22,

@@ -4,12 +4,12 @@
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=uUkx-lRxLjc" target="_blank"><img src="https://img.shields.io/badge/🎥 Video%20Tutorial-EA4C89" alt="Video Tutorial"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/releases" target="_blank"><img src="https://img.shields.io/badge/📦 Windows-50C878" alt="Windows Package"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/releases" target="_blank"><img src="https://img.shields.io/badge/📦 Windows-50C878" alt="Windows Package"></a>
   <a href="https://aidc-ai.github.io/Morpheus Video Studio" target="_blank"><img src="https://img.shields.io/badge/📘 Documentation-4A90E2" alt="Documentation"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/stargazers"><img src="https://img.shields.io/github/stars/AIDC-AI/Morpheus Video Studio.svg" alt="Stargazers"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/issues"><img src="https://img.shields.io/github/issues/AIDC-AI/Morpheus Video Studio.svg" alt="Issues"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/network/members"><img src="https://img.shields.io/github/forks/AIDC-AI/Morpheus Video Studio.svg" alt="Forks"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/AIDC-AI/Morpheus Video Studio.svg" alt="License"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/stargazers"><img src="https://img.shields.io/github/stars/MofaceJojo/morpheus-video-studio.svg" alt="Stargazers"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/issues"><img src="https://img.shields.io/github/issues/MofaceJojo/morpheus-video-studio.svg" alt="Issues"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/network/members"><img src="https://img.shields.io/github/forks/MofaceJojo/morpheus-video-studio.svg" alt="Forks"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MofaceJojo/morpheus-video-studio.svg" alt="License"></a>
 </p>
 
 https://github.com/user-attachments/assets/a42e7457-fcc8-40da-83fc-784c45a8b95d
@@ -179,7 +179,7 @@ Here are actual cases generated using Morpheus Video Studio, showcasing video ef
 
 **No need to install Python, uv, or ffmpeg - ready to use out of the box!**
 
-👉 **[Download Windows All-in-One Package](https://github.com/AIDC-AI/Morpheus Video Studio/releases/latest)**
+👉 **[Download Windows All-in-One Package](https://github.com/MofaceJojo/morpheus-video-studio/releases/latest)**
 
 1. Download the latest Windows All-in-One Package and extract it
 2. Double-click `start.bat` to launch the Web interface
@@ -226,7 +226,7 @@ After installation, run `ffmpeg -version` in the terminal to verify successful i
 #### Step 1: Clone Project
 
 ```bash
-git clone https://github.com/AIDC-AI/Morpheus Video Studio.git
+git clone https://github.com/MofaceJojo/morpheus-video-studio.git
 cd Morpheus Video Studio
 ```
 
@@ -396,7 +396,6 @@ A: **This project fully supports free operation!**
 
 Morpheus Video Studio design is inspired by the following excellent open-source projects:
 
-- [Pixelle-MCP](https://github.com/AIDC-AI/Pixelle-MCP) - ComfyUI MCP server, allows AI assistants to directly call ComfyUI
 - [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) - Excellent video generation tool
 - [NarratoAI](https://github.com/linyqh/NarratoAI) - Film commentary automation tool
 - [MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus) - Video creation platform
@@ -416,8 +415,8 @@ Scan the QR codes below to join our communities for latest updates and technical
 
 ## 📢 Feedback and Support
 
-- 🐛 **Encountered Issues**: Submit [Issue](https://github.com/AIDC-AI/Morpheus Video Studio/issues)
-- 💡 **Feature Suggestions**: Submit [Feature Request](https://github.com/AIDC-AI/Morpheus Video Studio/issues)
+- 🐛 **Encountered Issues**: Submit [Issue](https://github.com/MofaceJojo/morpheus-video-studio/issues)
+- 💡 **Feature Suggestions**: Submit [Feature Request](https://github.com/MofaceJojo/morpheus-video-studio/issues)
 - ⭐ **Give a Star**: If this project helps you, feel free to give a Star for support!
 
 
@@ -436,5 +435,4 @@ This project is released under the Apache License 2.0. For details, please see t
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=AIDC-AI/Morpheus Video Studio&type=Date)](https://star-history.com/#AIDC-AI/Morpheus Video Studio&Date)
-
+[![Star History Chart](https://api.star-history.com/svg?repos=MofaceJojo/morpheus-video-studio&type=Date)](https://star-history.com/#MofaceJojo/morpheus-video-studio&Date)

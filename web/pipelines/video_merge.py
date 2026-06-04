@@ -4,7 +4,7 @@ from typing import Any
 
 import streamlit as st
 
-from pixelle_video.services.moneyprinter_tools import merge_media
+from morpheus_video_studio.services.moneyprinter_tools import merge_media
 from web.pipelines.base import PipelineUI, register_pipeline_ui
 from web.pipelines.video_mix import _size_from_layout
 
@@ -15,7 +15,7 @@ class VideoMergePipelineUI(PipelineUI):
     icon = "🧩"
     description = "按顺序合并本地图片/视频片段，可统一画幅、帧率并添加背景音乐。"
 
-    def render(self, pixelle_video: Any):
+    def render(self, morpheus_video_studio: Any):
         left, right = st.columns([1, 1])
         with left:
             with st.container(border=True):

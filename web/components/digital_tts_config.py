@@ -22,10 +22,10 @@ from loguru import logger
 
 from web.i18n import tr, get_language
 from web.utils.async_helpers import run_async
-from pixelle_video.config import config_manager
+from morpheus_video_studio.config import config_manager
 
 
-def render_style_config(pixelle_video):
+def render_style_config(morpheus_video_studio):
     """Render style configuration section (middle column)"""
     # TTS Section (moved from left column)
     # ====================================================================
@@ -63,7 +63,7 @@ def render_style_config(pixelle_video):
         # ================================================================
         if tts_mode == "local":
             # Import voice configuration
-            from pixelle_video.tts_voices import EDGE_TTS_VOICES, get_voice_display_name
+            from morpheus_video_studio.tts_voices import EDGE_TTS_VOICES, get_voice_display_name
             
             # Get saved voice from config
             local_config = tts_config.get("local", {})
@@ -179,7 +179,7 @@ def render_style_config(pixelle_video):
                             if ref_audio_path:
                                 tts_params["ref_audio"] = str(ref_audio_path)
                         
-                        audio_path = run_async(pixelle_video.tts(**tts_params))
+                        audio_path = run_async(morpheus_video_studio.tts(**tts_params))
                         
                         # Play the audio
                         if audio_path:

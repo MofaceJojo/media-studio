@@ -17,7 +17,6 @@ Content input components for web UI (left column)
 import streamlit as st
 
 from web.i18n import tr
-from web.utils.async_helpers import get_project_version
 
 
 def render_content_input():
@@ -201,7 +200,7 @@ def render_bgm_section(key_prefix=""):
             st.markdown(tr("bgm.how"))
         
         # Dynamically scan bgm folder for music files (merged from bgm/ and data/bgm/)
-        from pixelle_video.utils.os_util import list_resource_files
+        from morpheus_video_studio.utils.os_util import list_resource_files
         
         try:
             all_files = list_resource_files("bgm")
@@ -246,7 +245,7 @@ def render_bgm_section(key_prefix=""):
         # BGM preview button (only if BGM is not "None")
         if bgm_choice != tr("bgm.none"):
             if st.button(tr("bgm.preview"), key=f"{key_prefix}preview_bgm", use_container_width=True):
-                from pixelle_video.utils.os_util import get_resource_path, resource_exists
+                from morpheus_video_studio.utils.os_util import get_resource_path, resource_exists
                 try:
                     if resource_exists("bgm", bgm_choice):
                         bgm_file_path = get_resource_path("bgm", bgm_choice)
@@ -263,23 +262,3 @@ def render_bgm_section(key_prefix=""):
         "bgm_path": bgm_path,
         "bgm_volume": bgm_volume
     }
-
-
-def render_version_info():
-    """Render version info and GitHub link"""
-    with st.container(border=True):
-        st.markdown(f"**{tr('version.title')}**")
-        version = get_project_version()
-        github_url = "https://github.com/AIDC-AI/Morpheus Video Studio"
-        
-        # Version and GitHub link in one line
-        github_url = "https://github.com/AIDC-AI/Morpheus Video Studio"
-        badge_url = "https://img.shields.io/github/stars/AIDC-AI/Morpheus Video Studio"
-
-        st.markdown(
-            f'{tr("version.current")}: `{version}` &nbsp;&nbsp; '
-            f'<a href="{github_url}" target="_blank">'
-            f'<img src="{badge_url}" alt="GitHub stars" style="vertical-align: middle;">'
-            f'</a>',
-            unsafe_allow_html=True)
-

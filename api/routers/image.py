@@ -17,7 +17,7 @@ Image generation endpoints
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from api.dependencies import PixelleVideoDep
+from api.dependencies import MorpheusVideoStudioDep
 from api.schemas.image import ImageGenerateRequest, ImageGenerateResponse
 
 router = APIRouter(prefix="/image", tags=["Basic Services"])
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/image", tags=["Basic Services"])
 @router.post("/generate", response_model=ImageGenerateResponse)
 async def image_generate(
     request: ImageGenerateRequest,
-    pixelle_video: PixelleVideoDep
+    morpheus_video_studio: MorpheusVideoStudioDep
 ):
     """
     Image generation endpoint
@@ -44,7 +44,7 @@ async def image_generate(
         logger.info(f"Image generation request: {request.prompt[:50]}...")
         
         # Call media service (backward compatible with image API)
-        media_result = await pixelle_video.media(
+        media_result = await morpheus_video_studio.media(
             prompt=request.prompt,
             width=request.width,
             height=request.height,

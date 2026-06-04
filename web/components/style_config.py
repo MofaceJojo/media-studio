@@ -23,20 +23,21 @@ from loguru import logger
 from web.i18n import tr, get_language
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import check_and_warn_selfhost_workflow
-from pixelle_video.config import config_manager
-from pixelle_video.utils.omnivoice_util import (
+from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.utils.omnivoice_util import (
     check_omnivoice_health,
     format_omnivoice_error,
     normalize_omnivoice_instruct,
 )
-from pixelle_video.utils.comfyui_util import check_comfyui_health
+from morpheus_video_studio.utils.comfyui_util import check_comfyui_health
 
 
-def render_style_config(pixelle_video):
+def render_style_config(morpheus_video_studio, tts_container=None):
     """Render style configuration section (middle column)"""
     # TTS Section (moved from left column)
     # ====================================================================
-    with st.container(border=True):
+    tts_section = tts_container.container(border=True) if tts_container else st.container(border=True)
+    with tts_section:
         st.markdown(f"**{tr('section.tts')}**")
         
         with st.expander(tr("help.feature_description"), expanded=False):
@@ -74,7 +75,7 @@ def render_style_config(pixelle_video):
         # ================================================================
         if tts_mode == "local":
             # Import voice configuration
-            from pixelle_video.tts_voices import EDGE_TTS_VOICES, get_voice_display_name
+            from morpheus_video_studio.tts_voices import EDGE_TTS_VOICES, get_voice_display_name
             
             # Get saved voice from config
             local_config = tts_config.get("local", {})
@@ -214,7 +215,7 @@ def render_style_config(pixelle_video):
         # ================================================================
         else:  # comfyui mode
             # Get available TTS workflows
-            tts_workflows = pixelle_video.tts.list_workflows()
+            tts_workflows = morpheus_video_studio.tts.list_workflows()
             
             # Build options for selectbox
             tts_workflow_options = [wf["display_name"] for wf in tts_workflows]
@@ -303,7 +304,7 @@ def render_style_config(pixelle_video):
                             if ref_audio_path:
                                 tts_params["ref_audio"] = str(ref_audio_path)
                         
-                        audio_path = run_async(pixelle_video.tts(**tts_params))
+                        audio_path = run_async(morpheus_video_studio.tts(**tts_params))
                         
                         # Play the audio
                         if audio_path:
@@ -380,7 +381,7 @@ def render_style_config(pixelle_video):
         current_lang = get_language()
         
         # Import template utilities
-        from pixelle_video.utils.template_util import get_templates_grouped_by_size_and_type, get_template_type
+        from morpheus_video_studio.utils.template_util import get_templates_grouped_by_size_and_type, get_template_type
         
         # Template type selector
         st.markdown(f"**{tr('template.type_selector')}**")
@@ -425,7 +426,7 @@ def render_style_config(pixelle_video):
         }
         
         # Get default template from config
-        template_config = pixelle_video.config.get("template", {})
+        template_config = morpheus_video_studio.config.get("template", {})
         config_default_template = template_config.get("default_template", "1080x1920/image_default.html")
 
         # Backward compatibility
@@ -587,14 +588,14 @@ def render_style_config(pixelle_video):
         
 
         # Display video size from template
-        from pixelle_video.utils.template_util import parse_template_size
+        from morpheus_video_studio.utils.template_util import parse_template_size
         video_width, video_height = parse_template_size(frame_template)
         st.caption(tr("template.video_size_info", width=video_width, height=video_height))
         
         # Custom template parameters (for video generation)
-        from pixelle_video.services.frame_html import HTMLFrameGenerator
+        from morpheus_video_studio.services.frame_html import HTMLFrameGenerator
         # Resolve template path to support both data/templates/ and templates/
-        from pixelle_video.utils.template_util import resolve_template_path
+        from morpheus_video_studio.utils.template_util import resolve_template_path
         template_path_for_params = resolve_template_path(frame_template)
         generator_for_params = HTMLFrameGenerator(template_path_for_params)
         custom_params_for_video = generator_for_params.parse_template_parameters()
@@ -605,7 +606,7 @@ def render_style_config(pixelle_video):
         st.session_state['template_media_height'] = media_height
         
         # Detect template media type
-        from pixelle_video.utils.template_util import get_template_type
+        from morpheus_video_studio.utils.template_util import get_template_type
         
         template_name = Path(frame_template).name
         template_media_type = get_template_type(template_name)
@@ -718,7 +719,7 @@ def render_style_config(pixelle_video):
                 )
             
             # Info: Size is auto-determined from template
-            from pixelle_video.utils.template_util import parse_template_size, resolve_template_path
+            from morpheus_video_studio.utils.template_util import parse_template_size, resolve_template_path
             template_width, template_height = parse_template_size(resolve_template_path(frame_template))
             st.info(f"📐 {tr('template.size_info')}: {template_width} × {template_height}")
             
@@ -726,10 +727,10 @@ def render_style_config(pixelle_video):
             if st.button(tr("template.preview_button"), key="btn_preview_template", use_container_width=True):
                 with st.spinner(tr("template.preview_generating")):
                     try:
-                        from pixelle_video.services.frame_html import HTMLFrameGenerator
+                        from morpheus_video_studio.services.frame_html import HTMLFrameGenerator
 
                         # Use the currently selected template (size is auto-parsed)
-                        from pixelle_video.utils.template_util import resolve_template_path
+                        from morpheus_video_studio.utils.template_util import resolve_template_path
                         template_path = resolve_template_path(frame_template)
                         generator = HTMLFrameGenerator(template_path)
                         
@@ -817,7 +818,7 @@ def render_style_config(pixelle_video):
             )
 
             # Get available workflows and filter by template type
-            all_workflows = pixelle_video.media.list_workflows()
+            all_workflows = morpheus_video_studio.media.list_workflows()
             
             # Filter workflows based on template media type
             if template_media_type == "video":
@@ -937,13 +938,13 @@ def render_style_config(pixelle_video):
                     previewing_text = tr("style.video_previewing") if template_media_type == "video" else tr("style.previewing")
                     with st.spinner(previewing_text):
                         try:
-                            from pixelle_video.utils.prompt_helper import build_image_prompt
+                            from morpheus_video_studio.utils.prompt_helper import build_image_prompt
                         
                             # Build final prompt with prefix
                             final_prompt = build_image_prompt(test_prompt, prompt_prefix)
                         
                             # Generate preview media (use user-specified size and media type)
-                            media_result = run_async(pixelle_video.media(
+                            media_result = run_async(morpheus_video_studio.media(
                                 prompt=final_prompt,
                                 workflow=workflow_key,
                                 media_type=template_media_type,

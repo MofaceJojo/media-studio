@@ -15,8 +15,8 @@ from typing import Any
 import streamlit as st
 from loguru import logger
 
-from pixelle_video.config import config_manager
-from pixelle_video.pipelines.book_pdf import BookPDFVideoPipeline
+from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.pipelines.book_pdf import BookPDFVideoPipeline
 from web.pipelines.base import PipelineUI, register_pipeline_ui
 from web.utils.async_helpers import run_async
 
@@ -27,7 +27,7 @@ class BookPDFPipelineUI(PipelineUI):
     icon = "📖"
     description = "上传 PDF/图片书页和音频，自动拆页、OCR、重绘插图、加字幕并合成视频。"
 
-    def render(self, pixelle_video: Any):
+    def render(self, morpheus_video_studio: Any):
         left_col, middle_col, right_col = st.columns([1, 1, 1])
 
         with left_col:
@@ -37,7 +37,7 @@ class BookPDFPipelineUI(PipelineUI):
             options = self._render_options()
 
         with right_col:
-            self._render_run_panel(pixelle_video, {**inputs, **options})
+            self._render_run_panel(morpheus_video_studio, {**inputs, **options})
 
     def _render_inputs(self) -> dict:
         with st.container(border=True):
@@ -104,7 +104,7 @@ class BookPDFPipelineUI(PipelineUI):
             st.markdown("**输出路径**")
             output_dir = st.text_input(
                 "成片目录",
-                value="/Volumes/MACDATA/成片/Pixelle自动绘本视频",
+                value="/Volumes/MACDATA/成片/Morpheus Video Studio自动绘本视频",
                 key="book_pdf_output_dir",
             )
 
@@ -120,11 +120,11 @@ class BookPDFPipelineUI(PipelineUI):
             "output_dir": output_dir,
         }
 
-    def _render_run_panel(self, pixelle_video: Any, params: dict):
+    def _render_run_panel(self, morpheus_video_studio: Any, params: dict):
         with st.container(border=True):
             st.markdown("**自动执行**")
             if not config_manager.validate():
-                st.warning("Pixelle 的模型或 ComfyUI 配置还没通过校验。")
+                st.warning("Morpheus Video Studio 的模型或 ComfyUI 配置还没通过校验。")
 
             ready = bool(params.get("pdf_path") and params.get("audio_path"))
             if not ready:
@@ -149,7 +149,7 @@ class BookPDFPipelineUI(PipelineUI):
                     stem = Path(params["pdf_path"]).stem.replace(" ", "_")
                     output_path = output_dir / f"{stem}_自动重绘字幕版.mp4"
 
-                    pipeline = BookPDFVideoPipeline(pixelle_video)
+                    pipeline = BookPDFVideoPipeline(morpheus_video_studio)
                     result = run_async(
                         pipeline(
                             pdf_path=params["pdf_path"],

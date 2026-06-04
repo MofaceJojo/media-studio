@@ -1,5 +1,5 @@
 ========================================
-  Pixelle-Video - Windows Portable
+  Morpheus Video Studio - Windows Portable
 ========================================
 
 AI-powered video creation platform
@@ -46,7 +46,7 @@ Configuration is done through the Web UI:
    - Local ComfyUI API Key: For cloud image generation (optional)
 4. Click "Save Config" to save
 
-The configuration will be automatically saved to Pixelle-Video/config.yaml.
+The configuration will be automatically saved to Morpheus Video Studio/config.yaml.
 
 Note: You can also manually edit config.yaml if needed, but the Web UI is recommended.
 
@@ -56,7 +56,7 @@ Note: You can also manually edit config.yaml if needed, but the Web UI is recomm
 
 python/           - Python 3.11 embedded runtime
 tools/            - FFmpeg and other utilities
-Pixelle-Video/    - Main application
+Morpheus Video Studio/    - Main application
 data/             - User data (BGM, templates, workflows)
 output/           - Generated videos
 
@@ -89,15 +89,15 @@ Solution: Re-extract the package completely, don't move files
   Support
 ========================================
 
-GitHub: https://github.com/AIDC-AI/Pixelle-Video
-Documentation: https://aidc-ai.github.io/Pixelle-Video
-Issues: https://github.com/AIDC-AI/Pixelle-Video/issues
+GitHub: https://github.com/MofaceJojo/morpheus-video-studio
+Documentation: https://MofaceJojo.github.io/morpheus-video-studio
+Issues: https://github.com/MofaceJojo/morpheus-video-studio/issues
 
 ========================================
   License
 ========================================
 
-See LICENSE file in Pixelle-Video/ folder
+See LICENSE file in Morpheus Video Studio/ folder
 
-Copyright (c) 2025 Pixelle.AI
+Copyright (c) 2025 Morpheus Studio
 

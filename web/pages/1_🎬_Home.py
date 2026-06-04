@@ -26,7 +26,7 @@ if str(_project_root) not in sys.path:
 import streamlit as st
 
 # Import state management
-from web.state.session import init_session_state, init_i18n, get_pixelle_video
+from web.state.session import init_session_state, init_i18n, get_morpheus_video_studio
 
 # Import components
 from web.components.header import render_header
@@ -55,7 +55,7 @@ def main():
     render_faq_sidebar()
     
     # Initialize Morpheus Video Studio
-    pixelle_video = get_pixelle_video()
+    morpheus_video_studio = get_morpheus_video_studio()
     
     # Render system configuration (LLM + ComfyUI)
     render_advanced_settings()
@@ -81,7 +81,7 @@ def main():
                 st.caption(pipeline.description)
             
             # Delegate rendering
-            pipeline.render(pixelle_video)
+            pipeline.render(morpheus_video_studio)
 
 
 if __name__ == "__main__":

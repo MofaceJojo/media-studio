@@ -1,6 +1,6 @@
 # Configuration
 
-After installation, you need to configure services to use Pixelle-Video.
+After installation, you need to configure services to use Morpheus Video Studio.
 
 ---
 

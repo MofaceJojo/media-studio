@@ -9,11 +9,10 @@ from loguru import logger
 import httpx
 from web.i18n import tr, get_language
 from web.pipelines.base import PipelineUI, register_pipeline_ui
-from web.components.content_input import render_version_info
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import check_and_warn_selfhost_workflow
-from pixelle_video.config import config_manager
-from pixelle_video.utils.os_util import create_task_output_dir
+from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.utils.os_util import create_task_output_dir
 
 class ActionTransferPipelineUI(PipelineUI):
     """
@@ -31,7 +30,7 @@ class ActionTransferPipelineUI(PipelineUI):
     def description(self):
         return tr("pipeline.action_transfer.description")
 
-    def render(self, pixelle_video: Any):
+    def render(self, morpheus_video_studio: Any):
         # Three-column layout
         left_col,middle_col,right_col = st.columns([1, 1, 1])
 
@@ -39,14 +38,13 @@ class ActionTransferPipelineUI(PipelineUI):
         # Left Column: Video Upload
         # ====================================================================
         with left_col:
-            video_params = self.render_action_transfer_video_input(pixelle_video)
-            render_version_info()
+            video_params = self.render_action_transfer_video_input(morpheus_video_studio)
         
         # ====================================================================
         # Middle Column: Image Upload & Prompt
         # ====================================================================
         with middle_col:
-            assets_params = self.render_action_transfer_assets_input(pixelle_video)
+            assets_params = self.render_action_transfer_assets_input(morpheus_video_studio)
 
 
         # ====================================================================
@@ -58,9 +56,9 @@ class ActionTransferPipelineUI(PipelineUI):
                 **assets_params
             }
 
-            self._render_output_preview(pixelle_video, video_params)
+            self._render_output_preview(morpheus_video_studio, video_params)
 
-    def render_action_transfer_video_input(self, pixelle_video) -> dict:
+    def render_action_transfer_video_input(self, morpheus_video_studio) -> dict:
         with st.container(border=True):
             st.markdown(f"**{tr('action_transfer.video_upload')}**")
 
@@ -121,7 +119,7 @@ class ActionTransferPipelineUI(PipelineUI):
                 "duration": duration
                 }
 
-    def render_action_transfer_assets_input(self, pixelle_video) -> dict:
+    def render_action_transfer_assets_input(self, morpheus_video_studio) -> dict:
         with st.container(border=True):
             st.markdown(f"**{tr('action_transfer.image_upload')}**")
 
@@ -220,7 +218,7 @@ class ActionTransferPipelineUI(PipelineUI):
                 "workflow_key": workflow_key
                 }
 
-    def _render_output_preview(self, pixelle_video: Any, video_params: dict):
+    def _render_output_preview(self, morpheus_video_studio: Any, video_params: dict):
         """Render output preview section"""
         with st.container(border=True):
             st.markdown(f"**{tr('section.video_generation')}**")
@@ -285,7 +283,7 @@ class ActionTransferPipelineUI(PipelineUI):
                     async def generate_audio_visual_video():
                         task_dir, task_id = create_task_output_dir()
                         logger.info(f"[Initialization] Task Directory: {task_dir}")
-                        kit = await pixelle_video._get_or_create_comfykit()
+                        kit = await morpheus_video_studio._get_or_create_comfykit()
                         
                         import json
                         from pathlib import Path

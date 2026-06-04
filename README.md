@@ -4,12 +4,12 @@
 
 <p align="center">
   <a href="https://www.bilibili.com/video/BV1WzyGBnEVp/?vd_source=e7e7d4ca8db9a18c80f17a24a6582fca" target="_blank"><img src="https://img.shields.io/badge/🎥 视频教程-EA4C89" alt="视频教程"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/releases" target="_blank"><img src="https://img.shields.io/badge/📦 Windows包-50C878" alt="Windows整合包"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/releases" target="_blank"><img src="https://img.shields.io/badge/📦 Windows包-50C878" alt="Windows整合包"></a>
   <a href="https://aidc-ai.github.io/Morpheus Video Studio/zh" target="_blank"><img src="https://img.shields.io/badge/📘 使用文档-4A90E2" alt="使用文档"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/stargazers"><img src="https://img.shields.io/github/stars/AIDC-AI/Morpheus Video Studio.svg" alt="Stargazers"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/issues"><img src="https://img.shields.io/github/issues/AIDC-AI/Morpheus Video Studio.svg" alt="Issues"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/network/members"><img src="https://img.shields.io/github/forks/AIDC-AI/Morpheus Video Studio.svg" alt="Forks"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/AIDC-AI/Morpheus Video Studio.svg" alt="License"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/stargazers"><img src="https://img.shields.io/github/stars/MofaceJojo/morpheus-video-studio.svg" alt="Stargazers"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/issues"><img src="https://img.shields.io/github/issues/MofaceJojo/morpheus-video-studio.svg" alt="Issues"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/network/members"><img src="https://img.shields.io/github/forks/MofaceJojo/morpheus-video-studio.svg" alt="Forks"></a>
+  <a href="https://github.com/MofaceJojo/morpheus-video-studio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MofaceJojo/morpheus-video-studio.svg" alt="License"></a>
 </p>
 
 https://github.com/user-attachments/assets/a42e7457-fcc8-40da-83fc-784c45a8b95d
@@ -183,7 +183,7 @@ Morpheus Video Studio 采用模块化设计，整个视频生成流程清晰简�
 
 **无需安装 Python、uv 或 ffmpeg，一键开箱即用！**
 
-👉 **[下载 Windows 一键整合包](https://github.com/AIDC-AI/Morpheus Video Studio/releases/latest)**
+👉 **[下载 Windows 一键整合包](https://github.com/MofaceJojo/morpheus-video-studio/releases/latest)**
 
 1. 下载最新的 Windows 一键整合包并解压
 2. 双击运行 `start.bat` 启动 Web 界面
@@ -230,7 +230,7 @@ sudo apt install ffmpeg
 #### 第一步：下载项目
 
 ```bash
-git clone https://github.com/AIDC-AI/Morpheus Video Studio.git
+git clone https://github.com/MofaceJojo/morpheus-video-studio.git
 cd Morpheus Video Studio
 ```
 
@@ -400,7 +400,6 @@ A: **本项目完全支持免费运行！**
 
 Morpheus Video Studio 的设计受到以下优秀开源项目的启发：
 
-- [Pixelle-MCP](https://github.com/AIDC-AI/Pixelle-MCP) - ComfyUI MCP 服务器，让 AI 助手直接调用 ComfyUI
 - [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) - 优秀的视频生成工具
 - [NarratoAI](https://github.com/linyqh/NarratoAI) - 影视解说自动化工具
 - [MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus) - 视频创作平台
@@ -420,8 +419,8 @@ Morpheus Video Studio 的设计受到以下优秀开源项目的启发：
 
 ## 📢 反馈与支持
 
-- 🐛 **遇到问题**: 提交 [Issue](https://github.com/AIDC-AI/Morpheus Video Studio/issues)
-- 💡 **功能建议**: 提交 [Feature Request](https://github.com/AIDC-AI/Morpheus Video Studio/issues)
+- 🐛 **遇到问题**: 提交 [Issue](https://github.com/MofaceJojo/morpheus-video-studio/issues)
+- 💡 **功能建议**: 提交 [Feature Request](https://github.com/MofaceJojo/morpheus-video-studio/issues)
 - ⭐ **给个 Star**: 如果这个项目对你有帮助，欢迎给个 Star 支持一下！
 
 
@@ -443,5 +442,4 @@ Morpheus Video Studio 的设计受到以下优秀开源项目的启发：
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=AIDC-AI/Morpheus Video Studio&type=Date)](https://star-history.com/#AIDC-AI/Morpheus Video Studio&Date)
-
+[![Star History Chart](https://api.star-history.com/svg?repos=MofaceJojo/morpheus-video-studio&type=Date)](https://star-history.com/#MofaceJojo/morpheus-video-studio&Date)

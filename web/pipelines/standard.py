@@ -16,16 +16,17 @@ Standard Pipeline UI
 Implements the classic 3-column layout for the Standard Pipeline.
 """
 
-import streamlit as st
 from typing import Any
-from web.i18n import tr
 
-from web.pipelines.base import PipelineUI, register_pipeline_ui
+import streamlit as st
 
 # Import components
-from web.components.content_input import render_content_input, render_bgm_section, render_version_info
-from web.components.style_config import render_style_config
+from web.components.content_input import render_bgm_section, render_content_input
+from web.components.moneyprinter_config import render_moneyprinter_config
 from web.components.output_preview import render_output_preview
+from web.components.style_config import render_style_config
+from web.i18n import tr
+from web.pipelines.base import PipelineUI, register_pipeline_ui
 
 
 class StandardPipelineUI(PipelineUI):
@@ -44,44 +45,51 @@ class StandardPipelineUI(PipelineUI):
     def description(self):
         return tr("pipeline.quick_create.description")
     
-    def render(self, pixelle_video: Any):
-        # Three-column layout
-        left_col, middle_col, right_col = st.columns([1, 1, 1])
-        
-        # ====================================================================
-        # Left Column: Content Input & BGM
-        # ====================================================================
-        with left_col:
-            # Content input (mode, text, title, n_scenes)
-            content_params = render_content_input()
-            
-            # BGM selection (bgm_path, bgm_volume)
-            bgm_params = render_bgm_section()
-            
-            # Version info & GitHub link
-            render_version_info()
-        
-        # ====================================================================
-        # Middle Column: Style Configuration
-        # ====================================================================
-        with middle_col:
-            # Style configuration (TTS, template, workflow, etc.)
-            style_params = render_style_config(pixelle_video)
-        
-        # ====================================================================
-        # Right Column: Output Preview
-        # ====================================================================
-        with right_col:
-            # Combine all parameters
-            video_params = {
-                "pipeline": self.name,
-                **content_params,
-                **bgm_params,
-                **style_params
-            }
-            
-            # Render output preview (generate button, progress, video preview)
-            render_output_preview(pixelle_video, video_params)
+    def render(self, morpheus_video_studio: Any):
+        content_tab, visual_tab, audio_tab = st.tabs(
+            ["1. 文案与生成", "2. 画面与素材", "3. 声音与字幕"]
+        )
+
+        with content_tab:
+            input_col, output_col = st.columns([1.15, 0.85], gap="large")
+            with input_col:
+                content_params = render_content_input()
+            with output_col:
+                output_slot = st.container()
+
+        with audio_tab:
+            voice_col, subtitle_col = st.columns(2, gap="large")
+            with voice_col:
+                tts_slot = st.container()
+                bgm_params = render_bgm_section(key_prefix="quick_")
+            with subtitle_col:
+                subtitle_slot = st.container()
+
+        with visual_tab:
+            st.caption("先设置视频素材与画幅，再选择分镜模板和媒体生成策略。")
+            video_slot = st.container()
+            style_params = render_style_config(morpheus_video_studio, tts_container=tts_slot)
+
+        moneyprinter_params = render_moneyprinter_config(
+            style_params,
+            video_container=video_slot,
+            subtitle_container=subtitle_slot,
+        )
+
+        video_params = {
+            "pipeline": self.name,
+            **content_params,
+            **bgm_params,
+            **style_params,
+            **moneyprinter_params,
+        }
+
+        if video_params.get("video_count", 1) > 1 and not video_params.get("batch_mode"):
+            video_params["batch_mode"] = True
+            video_params["topics"] = [video_params.get("text", "")] * video_params["video_count"]
+
+        with output_slot:
+            render_output_preview(morpheus_video_studio, video_params)
 
 
 # Register self

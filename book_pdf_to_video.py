@@ -5,8 +5,8 @@ import argparse
 import asyncio
 from pathlib import Path
 
-from pixelle_video.pipelines.book_pdf import BookPDFVideoPipeline
-from pixelle_video.service import PixelleVideoCore
+from morpheus_video_studio.pipelines.book_pdf import BookPDFVideoPipeline
+from morpheus_video_studio.service import MorpheusVideoStudioCore
 
 
 def parse_args():
@@ -30,11 +30,11 @@ async def main():
     args = parse_args()
     output = args.output
     if not output:
-        out_dir = Path("/Volumes/MACDATA/成片/Pixelle自动绘本视频")
+        out_dir = Path("/Volumes/MACDATA/成片/Morpheus Video Studio自动绘本视频")
         out_dir.mkdir(parents=True, exist_ok=True)
         output = str(out_dir / f"{Path(args.pdf).stem.replace(' ', '_')}_自动重绘字幕版.mp4")
 
-    core = PixelleVideoCore()
+    core = MorpheusVideoStudioCore()
     await core.initialize()
     pipeline = BookPDFVideoPipeline(core)
 
