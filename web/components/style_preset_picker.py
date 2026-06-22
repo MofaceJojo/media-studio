@@ -5,18 +5,23 @@ import streamlit as st
 from morpheus_video_studio.style_presets import get_image_style_preset, list_image_style_presets
 
 
-def get_default_image_style_preset() -> dict[str, str]:
+def get_default_image_style_preset() -> dict[str, str] | None:
     presets = list_image_style_presets()
     if not presets:
-        raise ValueError("No image style presets configured")
+        return None
     return presets[0]
 
 
 def render_image_style_preset_picker(*, session_key: str = "image_style_preset") -> dict | None:
     presets = list_image_style_presets()
+    if not presets:
+        return None
+
     preset_labels = {preset["label"]: preset["id"] for preset in presets}
     labels = list(preset_labels.keys())
     default_preset = get_default_image_style_preset()
+    if default_preset is None:
+        return None
 
     if session_key not in st.session_state or st.session_state.get(session_key) not in preset_labels:
         st.session_state[session_key] = default_preset["label"]

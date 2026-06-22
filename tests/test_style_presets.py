@@ -108,6 +108,24 @@ def test_render_image_style_preset_picker_defaults_to_first_preset(monkeypatch):
     assert selected == first_preset
 
 
+def test_render_image_style_preset_picker_returns_none_when_catalog_empty(monkeypatch):
+    class FakeStreamlit:
+        def __init__(self):
+            self.session_state = {}
+
+        def radio(self, _label, _options, *, horizontal, key):
+            raise AssertionError("radio should not render when no presets exist")
+
+    fake_streamlit = FakeStreamlit()
+    monkeypatch.setattr(style_preset_picker, "st", fake_streamlit)
+    monkeypatch.setattr(style_preset_picker, "list_image_style_presets", lambda: [])
+
+    selected = style_preset_picker.render_image_style_preset_picker()
+
+    assert selected is None
+    assert "image_style_preset" not in fake_streamlit.session_state
+
+
 def test_resolve_image_style_prompt_combines_prefix_and_user_prompt():
     result = resolve_image_style_prompt(
         "portrait photography, natural skin texture",

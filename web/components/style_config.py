@@ -827,10 +827,16 @@ def render_style_config(morpheus_video_studio, tts_container=None):
             style_mode = "manual"
 
             if template_media_type == "image":
+                default_image_preset = get_default_image_style_preset()
+                presets_available = default_image_preset is not None
+
                 if "media_style_mode" not in st.session_state:
-                    st.session_state["media_style_mode"] = "preset"
-                if "image_style_preset" not in st.session_state:
-                    st.session_state["image_style_preset"] = get_default_image_style_preset()["label"]
+                    st.session_state["media_style_mode"] = "preset" if presets_available else "manual"
+                elif not presets_available and st.session_state["media_style_mode"] == "preset":
+                    st.session_state["media_style_mode"] = "manual"
+
+                if presets_available and "image_style_preset" not in st.session_state:
+                    st.session_state["image_style_preset"] = default_image_preset["label"]
 
                 style_mode = st.radio(
                     "风格模式",
@@ -842,10 +848,14 @@ def render_style_config(morpheus_video_studio, tts_container=None):
                     horizontal=True,
                     key="media_style_mode",
                 )
-                if style_mode == "preset":
+                if style_mode == "preset" and presets_available:
                     selected_preset = render_image_style_preset_picker()
                     if selected_preset:
                         st.caption(selected_preset["description"])
+                elif style_mode == "preset":
+                    st.warning("风格标签暂不可用，已切换为手动工作流模式。")
+                    style_mode = "manual"
+                    st.session_state["media_style_mode"] = "manual"
 
             # Get available workflows and filter by template type
             all_workflows = morpheus_video_studio.media.list_workflows()
