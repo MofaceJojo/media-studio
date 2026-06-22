@@ -20,9 +20,11 @@ from pathlib import Path
 import streamlit as st
 from loguru import logger
 
-from morpheus_video_studio.style_presets import list_image_style_presets
 from web.i18n import tr, get_language
-from web.components.style_preset_picker import render_image_style_preset_picker
+from web.components.style_preset_picker import (
+    get_default_image_style_preset,
+    render_image_style_preset_picker,
+)
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import check_and_warn_selfhost_workflow
 from morpheus_video_studio.config import config_manager
@@ -825,22 +827,10 @@ def render_style_config(morpheus_video_studio, tts_container=None):
             style_mode = "manual"
 
             if template_media_type == "image":
-                saved_workflow = comfyui_config.get(media_config_key, {}).get("default_workflow", "")
-                current_prefix = comfyui_config.get(media_config_key, {}).get("prompt_prefix", "")
-                matching_preset = next(
-                    (
-                        preset
-                        for preset in list_image_style_presets()
-                        if preset["workflow"] == saved_workflow
-                        and preset["prompt_prefix"] == current_prefix
-                    ),
-                    None,
-                )
-
                 if "media_style_mode" not in st.session_state:
-                    st.session_state["media_style_mode"] = "preset" if matching_preset else "manual"
-                if matching_preset and "image_style_preset" not in st.session_state:
-                    st.session_state["image_style_preset"] = matching_preset["label"]
+                    st.session_state["media_style_mode"] = "preset"
+                if "image_style_preset" not in st.session_state:
+                    st.session_state["image_style_preset"] = get_default_image_style_preset()["label"]
 
                 style_mode = st.radio(
                     "风格模式",

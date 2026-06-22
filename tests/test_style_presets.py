@@ -12,6 +12,7 @@ from morpheus_video_studio.style_presets import (
     list_image_style_presets,
     resolve_image_style_prompt,
 )
+from web.components import style_preset_picker
 
 
 def test_plain_python_import_of_style_presets_works_without_comfykit_shim():
@@ -84,6 +85,27 @@ def test_each_image_style_preset_exposes_ui_fields():
         assert preset["description"]
         assert preset["workflow"].startswith("selfhost/image_")
         assert preset["prompt_prefix"]
+
+
+def test_render_image_style_preset_picker_defaults_to_first_preset(monkeypatch):
+    presets = list_image_style_presets()
+    first_preset = presets[0]
+
+    class FakeStreamlit:
+        def __init__(self):
+            self.session_state = {}
+
+        def radio(self, _label, _options, *, horizontal, key):
+            assert horizontal is True
+            return self.session_state.get(key)
+
+    fake_streamlit = FakeStreamlit()
+    monkeypatch.setattr(style_preset_picker, "st", fake_streamlit)
+
+    selected = style_preset_picker.render_image_style_preset_picker()
+
+    assert fake_streamlit.session_state["image_style_preset"] == first_preset["label"]
+    assert selected == first_preset
 
 
 def test_resolve_image_style_prompt_combines_prefix_and_user_prompt():
