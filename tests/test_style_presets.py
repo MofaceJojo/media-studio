@@ -1,25 +1,41 @@
+import json
+import subprocess
 import sys
-import types
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-if "comfykit" not in sys.modules:
-    comfykit_stub = types.ModuleType("comfykit")
-
-    class ComfyKit:  # pragma: no cover - import shim only
-        pass
-
-    comfykit_stub.ComfyKit = ComfyKit
-    sys.modules["comfykit"] = comfykit_stub
-
 from morpheus_video_studio.style_presets import (
     get_image_style_preset,
     list_image_style_presets,
     resolve_image_style_prompt,
 )
+
+
+def test_plain_python_import_of_style_presets_works_without_comfykit_shim():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import json; "
+                "from morpheus_video_studio.style_presets import list_image_style_presets; "
+                "print(json.dumps([preset['id'] for preset in list_image_style_presets()]))"
+            ),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)[:2] == [
+        "photo-real-portrait",
+        "warm-hand-drawn-fantasy",
+    ]
 
 
 def test_list_image_style_presets_returns_expected_labels():

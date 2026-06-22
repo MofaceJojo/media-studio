@@ -43,10 +43,28 @@ Usage:
     print(morpheus_video_studio.pipelines.keys())  # dict_keys(['standard', 'custom'])
 """
 
-from morpheus_video_studio.service import MorpheusVideoStudioCore, morpheus_video_studio
+from typing import TYPE_CHECKING
+
 from morpheus_video_studio.config import config_manager
+
+if TYPE_CHECKING:
+    from morpheus_video_studio.service import MorpheusVideoStudioCore, morpheus_video_studio
 
 __version__ = "0.1.0"
 
 __all__ = ["MorpheusVideoStudioCore", "morpheus_video_studio", "config_manager"]
 
+
+def __getattr__(name: str):
+    if name in {"MorpheusVideoStudioCore", "morpheus_video_studio"}:
+        from morpheus_video_studio.service import (
+            MorpheusVideoStudioCore,
+            morpheus_video_studio,
+        )
+
+        exports = {
+            "MorpheusVideoStudioCore": MorpheusVideoStudioCore,
+            "morpheus_video_studio": morpheus_video_studio,
+        }
+        return exports[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
