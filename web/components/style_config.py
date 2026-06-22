@@ -20,7 +20,9 @@ from pathlib import Path
 import streamlit as st
 from loguru import logger
 
+from morpheus_video_studio.style_presets import list_image_style_presets
 from web.i18n import tr, get_language
+from web.components.style_preset_picker import render_image_style_preset_picker
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import check_and_warn_selfhost_workflow
 from morpheus_video_studio.config import config_manager
@@ -817,6 +819,44 @@ def render_style_config(morpheus_video_studio, tts_container=None):
                 key="media_generation_strategy"
             )
 
+            comfyui_config = config_manager.get_comfyui_config()
+            media_config_key = "video" if template_media_type == "video" else "image"
+            selected_preset = None
+            style_mode = "manual"
+
+            if template_media_type == "image":
+                saved_workflow = comfyui_config.get(media_config_key, {}).get("default_workflow", "")
+                current_prefix = comfyui_config.get(media_config_key, {}).get("prompt_prefix", "")
+                matching_preset = next(
+                    (
+                        preset
+                        for preset in list_image_style_presets()
+                        if preset["workflow"] == saved_workflow
+                        and preset["prompt_prefix"] == current_prefix
+                    ),
+                    None,
+                )
+
+                if "media_style_mode" not in st.session_state:
+                    st.session_state["media_style_mode"] = "preset" if matching_preset else "manual"
+                if matching_preset and "image_style_preset" not in st.session_state:
+                    st.session_state["image_style_preset"] = matching_preset["label"]
+
+                style_mode = st.radio(
+                    "风格模式",
+                    options=["preset", "manual"],
+                    format_func=lambda value: {
+                        "preset": "风格标签",
+                        "manual": "手动工作流",
+                    }[value],
+                    horizontal=True,
+                    key="media_style_mode",
+                )
+                if style_mode == "preset":
+                    selected_preset = render_image_style_preset_picker()
+                    if selected_preset:
+                        st.caption(selected_preset["description"])
+
             # Get available workflows and filter by template type
             all_workflows = morpheus_video_studio.media.list_workflows()
             
@@ -838,27 +878,31 @@ def render_style_config(morpheus_video_studio, tts_container=None):
             default_workflow_index = 0
         
             # If user has a saved preference in config, try to match it
-            comfyui_config = config_manager.get_comfyui_config()
-            # Select config based on template type (image or video)
-            media_config_key = "video" if template_media_type == "video" else "image"
             saved_workflow = comfyui_config.get(media_config_key, {}).get("default_workflow", "")
             if saved_workflow and saved_workflow in workflow_keys:
                 default_workflow_index = workflow_keys.index(saved_workflow)
-        
-            workflow_display = st.selectbox(
-                "Workflow",
-                workflow_options if workflow_options else ["No workflows found"],
-                index=default_workflow_index,
-                label_visibility="collapsed",
-                key="media_workflow_select"
-            )
-        
-            # Get the actual workflow key (e.g., "selfhost/image_flux.json")
-            if workflow_options:
-                workflow_selected_index = workflow_options.index(workflow_display)
-                workflow_key = workflow_keys[workflow_selected_index]
+
+            if template_media_type == "image" and style_mode == "preset":
+                workflow_key = (
+                    selected_preset["workflow"]
+                    if selected_preset
+                    else (workflow_keys[default_workflow_index] if workflow_options else "selfhost/image_dreamshaper_m4.json")
+                )
             else:
-                workflow_key = "selfhost/image_dreamshaper_m4.json"
+                workflow_display = st.selectbox(
+                    "Workflow",
+                    workflow_options if workflow_options else ["No workflows found"],
+                    index=default_workflow_index,
+                    label_visibility="collapsed",
+                    key="media_workflow_select"
+                )
+
+                # Get the actual workflow key (e.g., "selfhost/image_flux.json")
+                if workflow_options:
+                    workflow_selected_index = workflow_options.index(workflow_display)
+                    workflow_key = workflow_keys[workflow_selected_index]
+                else:
+                    workflow_key = "selfhost/image_dreamshaper_m4.json"
 
             if media_strategy in ("stock_first", "stock_turbo"):
                 workflow_key = "stock/comfy" if media_strategy == "stock_first" else "stock/turbo"
@@ -903,16 +947,19 @@ def render_style_config(morpheus_video_studio, tts_container=None):
             # Prompt prefix input
             # Get current prompt_prefix from config (based on media type)
             current_prefix = comfyui_config.get(media_config_key, {}).get("prompt_prefix", "")
-        
-            # Prompt prefix input (temporary, not saved to config)
-            prompt_prefix = st.text_area(
-                tr('style.prompt_prefix'),
-                value=current_prefix,
-                placeholder=tr("style.prompt_prefix_placeholder"),
-                height=80,
-                label_visibility="visible",
-                help=tr("style.prompt_prefix_help")
-            )
+
+            if template_media_type == "image" and style_mode == "preset":
+                prompt_prefix = selected_preset["prompt_prefix"] if selected_preset else current_prefix
+            else:
+                # Prompt prefix input (temporary, not saved to config)
+                prompt_prefix = st.text_area(
+                    tr('style.prompt_prefix'),
+                    value=current_prefix,
+                    placeholder=tr("style.prompt_prefix_placeholder"),
+                    height=80,
+                    label_visibility="visible",
+                    help=tr("style.prompt_prefix_help")
+                )
         
             # Media preview expander
             preview_title = tr("style.video_preview_title") if template_media_type == "video" else tr("style.preview_title")

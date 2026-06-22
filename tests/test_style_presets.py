@@ -75,6 +75,17 @@ def test_get_image_style_preset_exposes_workflow_and_prompt_prefix():
     assert "portrait photography" in preset["prompt_prefix"].lower()
 
 
+def test_each_image_style_preset_exposes_ui_fields():
+    presets = list_image_style_presets()
+
+    for preset in presets:
+        assert preset["id"]
+        assert preset["label"]
+        assert preset["description"]
+        assert preset["workflow"].startswith("selfhost/image_")
+        assert preset["prompt_prefix"]
+
+
 def test_resolve_image_style_prompt_combines_prefix_and_user_prompt():
     result = resolve_image_style_prompt(
         "portrait photography, natural skin texture",
