@@ -250,7 +250,12 @@ class VideoService:
         audio_delay: float = 0.0,
         audio_tracks: Optional[List[str]] = None,
     ) -> str:
-        """Concatenate clips with video xfade and sequential narration audio."""
+        """Concatenate clips with video xfade and sequential narration audio.
+
+        Narration is rebuilt as a separate sequential track (never crossfaded),
+        and the visual tail is extended to compensate for the xfade overlap, so
+        the output keeps the full duration of every clip's narration.
+        """
         if len(videos) < 2:
             shutil.copy(videos[0], output)
             return output

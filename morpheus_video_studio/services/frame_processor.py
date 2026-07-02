@@ -322,8 +322,8 @@ class FrameProcessor:
                 frame.duration = media_result.duration
                 logger.debug(f"  ✓ Video generated: {local_path} (duration: {frame.duration:.2f}s)")
             else:
-                # Get video duration from file
-                frame.duration = await self._get_video_duration(local_path)
+                # Get video duration from file (fall back to the TTS audio duration)
+                frame.duration = await self._get_video_duration(local_path, fallback=frame.duration)
                 logger.debug(f"  ✓ Video generated: {local_path} (duration: {frame.duration:.2f}s)")
         
         else:
@@ -569,7 +569,7 @@ class FrameProcessor:
             raise ValueError(f"Unknown media type: {frame.media_type}")
         
         frame.video_segment_path = segment_path
-        frame.duration = await self._get_video_duration(segment_path)
+        frame.duration = await self._get_video_duration(segment_path, fallback=frame.duration)
         
         logger.debug(f"  ✓ Video segment created: {segment_path}")
     
@@ -701,7 +701,7 @@ class FrameProcessor:
             logger.debug(f"Failed to resolve local ComfyUI output for {url}: {exc}")
         return None
     
-    async def _get_video_duration(self, video_path: str) -> float:
+    async def _get_video_duration(self, video_path: str, fallback: Optional[float] = None) -> float:
         """Get video duration in seconds"""
         try:
             import ffmpeg
@@ -709,6 +709,8 @@ class FrameProcessor:
             duration = float(probe['format']['duration'])
             return duration
         except Exception as e:
-            logger.warning(f"Failed to get video duration: {e}, using audio duration")
-            # Fallback: use audio duration if available
+            if fallback:
+                logger.warning(f"Failed to get video duration: {e}, keeping known duration {fallback:.2f}s")
+                return fallback
+            logger.warning(f"Failed to get video duration: {e}, defaulting to 1.0s")
             return 1.0  # Default to 1 second if unable to determine

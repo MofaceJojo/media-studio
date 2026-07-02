@@ -299,35 +299,51 @@ class TTSService(ComfyBaseService):
                 raise
             logger.warning(f"Failed to read OmniVoice model status before TTS: {exc}")
 
-        try:
-            generated = await asyncio.to_thread(
-                generate_omnivoice_openai_speech,
-                final_base_url,
-                text=text,
-                model=final_model,
-                voice=final_voice,
-                response_format=response_format,
-                language=final_language,
-                instruct=final_instruct,
-                speed=final_speed,
-                seed=params.get("seed"),
-                duration=params.get("duration"),
-                timeout=read_timeout,
-            )
-            Path(output_path).write_bytes(generated["audio_bytes"])
-        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
             try:
-                model_status = fetch_omnivoice_model_status(final_base_url, timeout=4.0)
-            except Exception as status_exc:
-                logger.warning(f"Failed to refresh OmniVoice model status after TTS error: {status_exc}")
-            logger.error(f"OmniVoice TTS failed: {exc}")
-            raise RuntimeError(
-                format_omnivoice_error(
-                    exc,
-                    model_status=model_status,
-                    timeout_seconds=read_timeout,
+                generated = await asyncio.to_thread(
+                    generate_omnivoice_openai_speech,
+                    final_base_url,
+                    text=text,
+                    model=final_model,
+                    voice=final_voice,
+                    response_format=response_format,
+                    language=final_language,
+                    instruct=final_instruct,
+                    speed=final_speed,
+                    seed=params.get("seed"),
+                    duration=params.get("duration"),
+                    timeout=read_timeout,
                 )
-            ) from exc
+                Path(output_path).write_bytes(generated["audio_bytes"])
+                break
+            except (httpx.HTTPError, httpx.TimeoutException) as exc:
+                # Client errors (4xx) are not transient: bad instruct/voice won't
+                # fix itself, so surface them immediately.
+                is_client_error = (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and exc.response.status_code < 500
+                )
+                if is_client_error or attempt == max_attempts:
+                    try:
+                        model_status = fetch_omnivoice_model_status(final_base_url, timeout=4.0)
+                    except Exception as status_exc:
+                        logger.warning(f"Failed to refresh OmniVoice model status after TTS error: {status_exc}")
+                    logger.error(f"OmniVoice TTS failed (attempt {attempt}/{max_attempts}): {exc}")
+                    raise RuntimeError(
+                        format_omnivoice_error(
+                            exc,
+                            model_status=model_status,
+                            timeout_seconds=read_timeout,
+                        )
+                    ) from exc
+                wait_seconds = 2 ** (attempt - 1)
+                logger.warning(
+                    f"OmniVoice TTS transient error (attempt {attempt}/{max_attempts}): {exc}, "
+                    f"retrying in {wait_seconds}s"
+                )
+                await asyncio.sleep(wait_seconds)
 
         logger.info(f"✅ Generated audio (OmniVoice): {output_path}")
         return output_path
@@ -429,7 +445,8 @@ class TTSService(ComfyBaseService):
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
                 
                 logger.info(f"Downloading audio from {audio_path} to {output_path}")
-                async with httpx.AsyncClient() as client:
+                download_timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=30.0)
+                async with httpx.AsyncClient(timeout=download_timeout) as client:
                     response = await client.get(audio_path)
                     response.raise_for_status()
                     
