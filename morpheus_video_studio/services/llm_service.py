@@ -20,7 +20,7 @@ import json
 import re
 from typing import Optional, Type, TypeVar, Union
 
-from openai import AsyncOpenAI
+from openai import APITimeoutError, AsyncOpenAI
 from pydantic import BaseModel
 from loguru import logger
 
@@ -112,6 +112,8 @@ class LLMService:
         client_kwargs = {"api_key": final_api_key}
         if final_base_url:
             client_kwargs["base_url"] = final_base_url
+        client_kwargs["timeout"] = float(self._get_config_value("timeout_seconds", 25) or 25)
+        client_kwargs["max_retries"] = 0
         
         return AsyncOpenAI(**client_kwargs)
     
@@ -170,6 +172,7 @@ class LLMService:
         )
         
         logger.debug(f"LLM call: model={final_model}, base_url={client.base_url}, response_type={response_type}")
+        self._apply_provider_defaults(client=client, kwargs=kwargs)
         
         try:
             if response_type is not None:
@@ -205,9 +208,25 @@ class LLMService:
                 
                 return result
         
+        except APITimeoutError as e:
+            logger.error(f"LLM timeout (model={final_model}, base_url={client.base_url}): {e}")
+            raise RuntimeError(
+                f"LLM 请求超时（>{int(float(self._get_config_value('timeout_seconds', 25) or 25))}s）："
+                f"{final_model} 暂时没有响应。请重试，或在 Settings 里切换到更稳定的模型。"
+            ) from e
         except Exception as e:
             logger.error(f"LLM call error (model={final_model}, base_url={client.base_url}): {e}")
             raise
+
+    def _apply_provider_defaults(self, client: AsyncOpenAI, kwargs: dict):
+        """Apply provider-specific defaults that keep generic app calls reliable."""
+        base_url = str(client.base_url)
+        if "openrouter.ai" not in base_url:
+            return
+
+        extra_body = dict(kwargs.get("extra_body") or {})
+        extra_body.setdefault("reasoning", {"effort": "none", "exclude": True})
+        kwargs["extra_body"] = extra_body
     
     async def _call_with_structured_output(
         self,

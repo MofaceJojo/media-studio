@@ -20,13 +20,20 @@ Key Feature:
   to ensure perfect sync between audio and video (no padding, no trimming needed)
 """
 
+import asyncio
+from pathlib import Path
 from typing import Callable, Optional
+from urllib.parse import parse_qs, unquote, urlparse
 
 import httpx
 from loguru import logger
 
 from morpheus_video_studio.models.progress import ProgressEvent
 from morpheus_video_studio.models.storyboard import Storyboard, StoryboardFrame, StoryboardConfig
+from morpheus_video_studio.utils.content_generators import (
+    build_shot_prompt_variants,
+    plan_visual_shots,
+)
 
 
 class FrameProcessor:
@@ -159,7 +166,9 @@ class FrameProcessor:
         # Generate output path using task_id
         from morpheus_video_studio.utils.os_util import get_task_frame_path
         output_path = get_task_frame_path(config.task_id, frame.index, "audio")
-        
+        if config.tts_inference_mode == "omnivoice":
+            output_path = str(Path(output_path).with_suffix(".wav"))
+
         # Build TTS params based on inference mode
         tts_params = {
             "text": frame.narration,
@@ -207,11 +216,54 @@ class FrameProcessor:
         # Determine media type based on workflow
         # video_ prefix in workflow name indicates video generation
         workflow_name = config.media_workflow or ""
-        is_stock_workflow = workflow_name.startswith("stock/")
-        is_video_workflow = is_stock_workflow or "video_" in workflow_name.lower()
+        is_video_workflow = self._is_video_workflow(workflow_name)
         media_type = "video" if is_video_workflow else "image"
         
         logger.debug(f"  → Media type: {media_type} (workflow: {workflow_name})")
+
+        if media_type == "image":
+            target_duration = max(
+                frame.duration + float(config.scene_trailing_silence or 0.0),
+                float(config.min_segment_duration or 0.0),
+            )
+            shot_plan = plan_visual_shots(
+                target_duration,
+                min_shot_seconds=2.4,
+                max_shot_seconds=4.2,
+                max_shots=3,
+            )
+            frame.shot_count = shot_plan["shot_count"]
+            frame.shot_prompts = build_shot_prompt_variants(frame.image_prompt, frame.shot_count)
+            frame.shot_image_paths = []
+
+            for shot_index, shot_prompt in enumerate(frame.shot_prompts, start=1):
+                media_result = await self.core.media(
+                    prompt=shot_prompt,
+                    workflow=config.media_workflow,
+                    media_type="image",
+                    width=config.media_width,
+                    height=config.media_height,
+                    index=frame.index + 1,
+                    stock_selection_mode=config.stock_selection_mode,
+                )
+                if not media_result.is_image:
+                    raise ValueError(f"Expected image result for shot {shot_index}, got {media_result.media_type}")
+
+                local_path = await self._download_media(
+                    media_result.url,
+                    frame.index,
+                    config.task_id,
+                    media_type="image",
+                    output_suffix=f"shot_{shot_index:02d}",
+                )
+                frame.shot_image_paths.append(local_path)
+
+            frame.image_path = frame.shot_image_paths[0] if frame.shot_image_paths else None
+            frame.media_type = "image"
+            logger.debug(
+                f"  ✓ Generated {len(frame.shot_image_paths)} image shots for frame {frame.index}"
+            )
+            return
         
         # Build media generation parameters
         media_params = {
@@ -227,8 +279,16 @@ class FrameProcessor:
         # For video workflows: pass audio duration as target video duration
         # This ensures video length matches audio length from the source
         if is_video_workflow and frame.duration:
-            media_params["duration"] = frame.duration
-            logger.info(f"  → Generating video with target duration: {frame.duration:.2f}s (from TTS audio)")
+            target_duration = max(
+                frame.duration + float(config.scene_trailing_silence or 0),
+                float(config.min_segment_duration or 0),
+            )
+            media_params["duration"] = target_duration
+            logger.info(
+                f"  → Generating video with target duration: {target_duration:.2f}s "
+                f"(audio={frame.duration:.2f}s, trailing_silence={float(config.scene_trailing_silence or 0):.2f}s, "
+                f"min_segment={float(config.min_segment_duration or 0):.2f}s)"
+            )
         
         # Call Media generation
         media_result = await self.core.media(**media_params)
@@ -282,12 +342,25 @@ class FrameProcessor:
         from morpheus_video_studio.utils.os_util import get_task_frame_path
         output_path = get_task_frame_path(config.task_id, frame.index, "composed")
         
-        # For video type: render HTML as transparent overlay image
-        # For image type: render HTML with image background
-        # In both cases, we need the composed image
-        composed_path = await self._compose_frame_html(frame, storyboard, config, output_path)
-        
-        frame.composed_image_path = composed_path
+        if frame.media_type == "image" and len(frame.shot_image_paths) > 1:
+            frame.shot_composed_image_paths = []
+            for shot_index, image_path in enumerate(frame.shot_image_paths, start=1):
+                shot_output_path = self._with_suffix(output_path, f"shot_{shot_index:02d}")
+                composed_path = await self._compose_frame_html(
+                    frame,
+                    storyboard,
+                    config,
+                    shot_output_path,
+                    media_override=image_path,
+                )
+                frame.shot_composed_image_paths.append(composed_path)
+            frame.composed_image_path = frame.shot_composed_image_paths[0]
+        else:
+            # For video type: render HTML as transparent overlay image
+            # For image type: render HTML with image background
+            # In both cases, we need the composed image
+            composed_path = await self._compose_frame_html(frame, storyboard, config, output_path)
+            frame.composed_image_path = composed_path
         
         logger.debug(f"  ✓ Frame composed: {composed_path}")
     
@@ -296,7 +369,8 @@ class FrameProcessor:
         frame: StoryboardFrame,
         storyboard: 'Storyboard',
         config: StoryboardConfig,
-        output_path: str
+        output_path: str,
+        media_override: Optional[str] = None,
     ) -> str:
         """Compose frame using HTML template"""
         from morpheus_video_studio.services.frame_html import HTMLFrameGenerator
@@ -322,7 +396,7 @@ class FrameProcessor:
         generator = HTMLFrameGenerator(template_path)
         
         # Use video_path for video media, image_path for images
-        media_path = frame.video_path if frame.media_type == "video" else frame.image_path
+        media_path = media_override or (frame.video_path if frame.media_type == "video" else frame.image_path)
         logger.debug(f"Generating frame with media: '{media_path}' (type: {frame.media_type})")
         
         composed_path = await generator.generate_frame(
@@ -389,13 +463,56 @@ class FrameProcessor:
             # Step 1: Overlay transparent HTML image on video
             # The composed_image_path contains the rendered HTML with transparent background
             temp_video_with_overlay = get_task_frame_path(config.task_id, frame.index, "video") + "_overlay.mp4"
-            
-            video_service.overlay_image_on_video(
-                video=frame.video_path,
-                overlay_image=frame.composed_image_path,
-                output=temp_video_with_overlay,
-                scale_mode="contain"  # Scale video to fit template size (contain mode)
+            workflow_name = config.media_workflow or ""
+            should_stabilize_generated_video = (
+                workflow_name.startswith("selfhost/video_")
+                or ("video_" in workflow_name.lower() and not workflow_name.startswith(("stock/", "hyperframe/")))
             )
+
+            if should_stabilize_generated_video:
+                temp_still = get_task_frame_path(config.task_id, frame.index, "video") + "_stable.png"
+                temp_motion_base = get_task_frame_path(config.task_id, frame.index, "video") + "_stable_base.mp4"
+                target_duration = max(
+                    frame.duration + float(config.scene_trailing_silence or 0),
+                    float(config.min_segment_duration or 0),
+                )
+                logger.info(
+                    "  → Stabilizing raw video workflow output into a single held shot "
+                    f"(workflow={workflow_name}, target={target_duration:.2f}s)"
+                )
+                video_service.extract_video_frame(
+                    video=frame.video_path,
+                    output_image=temp_still,
+                    timestamp=min(max(frame.duration * 0.12, 0.15), 0.45),
+                )
+                video_service.create_silent_video_from_image(
+                    image=temp_still,
+                    output=temp_motion_base,
+                    duration=target_duration,
+                    fps=config.video_fps,
+                    motion_mode=config.image_motion_mode,
+                    motion_choices=config.image_motion_choices,
+                    motion_seed=frame.index,
+                )
+                video_service.overlay_image_on_video(
+                    video=temp_motion_base,
+                    overlay_image=frame.composed_image_path,
+                    output=temp_video_with_overlay,
+                    scale_mode="contain",
+                    motion_mode="none",
+                    motion_choices=None,
+                    motion_seed=frame.index,
+                )
+            else:
+                video_service.overlay_image_on_video(
+                    video=frame.video_path,
+                    overlay_image=frame.composed_image_path,
+                    output=temp_video_with_overlay,
+                    scale_mode="contain",  # Scale video to fit template size (contain mode)
+                    motion_mode=config.image_motion_mode,
+                    motion_choices=config.image_motion_choices,
+                    motion_seed=frame.index,
+                )
             
             # Step 2: Add narration audio to the overlaid video
             # Note: The video might have audio (replaced) or be silent (audio added)
@@ -404,25 +521,49 @@ class FrameProcessor:
                 audio=frame.audio_path,
                 output=output_path,
                 replace_audio=True,  # Replace video audio with narration
-                audio_volume=1.0
+                audio_volume=1.0,
+                auto_adjust_duration=False,
             )
             
             # Clean up temp file
             import os
             if os.path.exists(temp_video_with_overlay):
                 os.unlink(temp_video_with_overlay)
+            if should_stabilize_generated_video:
+                if os.path.exists(temp_still):
+                    os.unlink(temp_still)
+                if os.path.exists(temp_motion_base):
+                    os.unlink(temp_motion_base)
         
         elif frame.media_type == "image" or frame.media_type is None:
             # Image workflow: Use composed image directly
             # The asset_default.html template includes the image in the composition
             logger.debug(f"  → Using image-based composition")
-            
-            segment_path = video_service.create_video_from_image(
-                image=frame.composed_image_path,
-                audio=frame.audio_path,
-                output=output_path,
-                fps=config.video_fps
-            )
+
+            if len(frame.shot_composed_image_paths) > 1:
+                segment_path = video_service.create_video_from_images(
+                    images=frame.shot_composed_image_paths,
+                    audio=frame.audio_path,
+                    output=output_path,
+                    fps=config.video_fps,
+                    motion_mode=config.image_motion_mode,
+                    motion_choices=config.image_motion_choices,
+                    motion_seed=frame.index,
+                    min_duration=float(config.min_segment_duration or 0),
+                    trailing_silence=float(config.scene_trailing_silence or 0),
+                )
+            else:
+                segment_path = video_service.create_video_from_image(
+                    image=frame.composed_image_path,
+                    audio=frame.audio_path,
+                    output=output_path,
+                    fps=config.video_fps,
+                    motion_mode=config.image_motion_mode,
+                    motion_choices=config.image_motion_choices,
+                    motion_seed=frame.index,
+                    min_duration=float(config.min_segment_duration or 0),
+                    trailing_silence=float(config.scene_trailing_silence or 0),
+                )
         
         else:
             raise ValueError(f"Unknown media type: {frame.media_type}")
@@ -454,28 +595,111 @@ class FrameProcessor:
         url: str,
         frame_index: int,
         task_id: str,
-        media_type: str
+        media_type: str,
+        output_suffix: Optional[str] = None,
     ) -> str:
         """Download media (image or video) from URL to local file"""
         from morpheus_video_studio.utils.os_util import get_task_frame_path
-        from pathlib import Path
         import shutil
         output_path = get_task_frame_path(task_id, frame_index, media_type)
+        if output_suffix:
+            output_path = self._with_suffix(output_path, output_suffix)
 
         local_source = Path(url)
         if local_source.exists():
             shutil.copy2(local_source, output_path)
             return output_path
+
+        comfy_output_source = self._resolve_local_comfyui_output(url)
+        if comfy_output_source and comfy_output_source.exists():
+            shutil.copy2(comfy_output_source, output_path)
+            logger.info(f"Copied media from local ComfyUI output: {comfy_output_source}")
+            return output_path
         
         timeout = httpx.Timeout(connect=10.0, read=60, write=60, pool=60)
+        last_error = None
         async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            
-            with open(output_path, 'wb') as f:
-                f.write(response.content)
+            for attempt in range(1, 6):
+                try:
+                    comfy_output_source = self._resolve_local_comfyui_output(url)
+                    if comfy_output_source and comfy_output_source.exists():
+                        shutil.copy2(comfy_output_source, output_path)
+                        logger.info(f"Copied media from local ComfyUI output: {comfy_output_source}")
+                        return output_path
+
+                    response = await client.get(url)
+                    response.raise_for_status()
+
+                    with open(output_path, 'wb') as f:
+                        f.write(response.content)
+                    return output_path
+                except httpx.HTTPStatusError as exc:
+                    last_error = exc
+                    status = exc.response.status_code if exc.response else None
+                    if status not in {404, 409, 425, 429, 500, 502, 503, 504} or attempt == 5:
+                        raise
+                    logger.warning(
+                        f"Media download attempt {attempt}/5 failed with HTTP {status} for {url}; retrying"
+                    )
+                    await asyncio.sleep(min(0.6 * attempt, 2.0))
+                except httpx.HTTPError as exc:
+                    last_error = exc
+                    if attempt == 5:
+                        raise
+                    logger.warning(f"Media download attempt {attempt}/5 failed for {url}: {exc}; retrying")
+                    await asyncio.sleep(min(0.6 * attempt, 2.0))
+
+        if last_error:
+            raise last_error
         
         return output_path
+
+    @staticmethod
+    def _is_video_workflow(workflow_name: str) -> bool:
+        workflow_name = workflow_name or ""
+        is_stock_workflow = workflow_name.startswith("stock/")
+        is_hyperframe_workflow = workflow_name.startswith("hyperframe/")
+        return is_stock_workflow or is_hyperframe_workflow or "video_" in workflow_name.lower()
+
+    @staticmethod
+    def _with_suffix(path: str, suffix: str) -> str:
+        path_obj = Path(path)
+        return str(path_obj.with_name(f"{path_obj.stem}_{suffix}{path_obj.suffix}"))
+
+    def _resolve_local_comfyui_output(self, url: str) -> Optional[Path]:
+        """
+        Best-effort local resolution for ComfyUI /view and /api/view URLs.
+
+        When Morpheus and ComfyUI run on the same machine, copying directly from
+        the output directory is more reliable than hitting the local aiohttp view
+        endpoint while a large file is still being finalized.
+        """
+        try:
+            parsed = urlparse(url)
+            if parsed.scheme not in {"http", "https"}:
+                return None
+            if parsed.hostname not in {"127.0.0.1", "localhost"}:
+                return None
+            if parsed.path not in {"/view", "/api/view"}:
+                return None
+
+            query = parse_qs(parsed.query)
+            filename = unquote((query.get("filename") or [""])[0]).strip()
+            file_type = (query.get("type") or ["output"])[0].strip() or "output"
+            if not filename:
+                return None
+
+            candidates = [
+                Path.home() / "ComfyUI" / file_type / filename,
+                Path.cwd() / "ComfyUI" / file_type / filename,
+                Path.cwd() / file_type / filename,
+            ]
+            for candidate in candidates:
+                if candidate.exists():
+                    return candidate
+        except Exception as exc:
+            logger.debug(f"Failed to resolve local ComfyUI output for {url}: {exc}")
+        return None
     
     async def _get_video_duration(self, video_path: str) -> float:
         """Get video duration in seconds"""

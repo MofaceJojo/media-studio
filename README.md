@@ -1,4 +1,4 @@
-<h1 align="center">🎬 Morpheus Video Studio —— AI 全自动短视频引擎</h1>
+<h1 align="center">🎬 Media Studio —— 内容优先的音视频创作平台</h1>
 
 <p align="center"><a href="README_EN.md">English</a> | <b>中文</b></p>
 
@@ -16,7 +16,9 @@ https://github.com/user-attachments/assets/a42e7457-fcc8-40da-83fc-784c45a8b95d
 
 <br/>
 
-只需输入一个 **主题**，Morpheus Video Studio 就能自动完成：
+Media Studio 旨在把 **内容输入、音频生成、视频生成、数字人口播、素材复用** 统一到一个平台里。
+
+只需输入一个 **主题**，系统目前仍可自动完成：
 - ✍️ 撰写视频文案  
 - 🎨 生成 AI 配图/视频  
 - 🗣️ 合成语音解说  
@@ -400,9 +402,7 @@ A: **本项目完全支持免费运行！**
 
 Morpheus Video Studio 的设计受到以下优秀开源项目的启发：
 
-- [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) - 优秀的视频生成工具
 - [NarratoAI](https://github.com/linyqh/NarratoAI) - 影视解说自动化工具
-- [MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus) - 视频创作平台
 - [ComfyKit](https://github.com/puke3615/ComfyKit) - ComfyUI 工作流封装库
 
 感谢这些项目的开源精神！🙏

@@ -31,6 +31,7 @@ from morpheus_video_studio.services.image_analysis import ImageAnalysisService
 from morpheus_video_studio.services.video_analysis import VideoAnalysisService
 from morpheus_video_studio.services.video import VideoService
 from morpheus_video_studio.services.frame_processor import FrameProcessor
+from morpheus_video_studio.services.hyperframe_service import HyperFrameService
 from morpheus_video_studio.services.persistence import PersistenceService
 from morpheus_video_studio.services.history_manager import HistoryManager
 from morpheus_video_studio.pipelines.standard import StandardPipeline
@@ -91,6 +92,7 @@ class MorpheusVideoStudioCore:
         self.tts: Optional[TTSService] = None
         self.media: Optional[MediaService] = None
         self.video: Optional[VideoService] = None
+        self.hyperframe: Optional[HyperFrameService] = None
         self.frame_processor: Optional[FrameProcessor] = None
         self.persistence: Optional[PersistenceService] = None
         self.history: Optional[HistoryManager] = None
@@ -195,6 +197,7 @@ class MorpheusVideoStudioCore:
         self.image_analysis = ImageAnalysisService(self.config, core=self)
         self.video_analysis = VideoAnalysisService(self.config, core=self)
         self.video = VideoService()
+        self.hyperframe = HyperFrameService(self.config)
         self.frame_processor = FrameProcessor(self)
         self.persistence = PersistenceService(output_dir="output")
         self.history = HistoryManager(self.persistence)

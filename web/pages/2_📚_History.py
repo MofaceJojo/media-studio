@@ -30,6 +30,7 @@ from loguru import logger
 
 from web.state.session import init_session_state, init_i18n, get_morpheus_video_studio
 from web.components.header import render_header
+from web.components.studio_shell import inject_studio_css
 from web.i18n import tr
 from web.utils.async_helpers import run_async
 
@@ -377,6 +378,7 @@ def main():
     # Initialize
     init_session_state()
     init_i18n()
+    inject_studio_css()
     
     # Render header
     render_header()

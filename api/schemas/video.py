@@ -58,7 +58,10 @@ class VideoGenerateRequest(BaseModel):
     
     # === Media Parameters ===
     # Note: media_width and media_height are auto-determined from template meta tags
-    media_workflow: Optional[str] = Field(None, description="Custom media workflow (image or video)")
+    media_workflow: Optional[str] = Field(
+        None,
+        description="Custom media workflow (image/video), stock provider key, or 'hyperframe/render' for local HyperFrame video rendering"
+    )
     
     # === Video Parameters ===
     video_fps: int = Field(30, ge=15, le=60, description="Video FPS")

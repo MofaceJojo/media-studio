@@ -13,8 +13,8 @@ from urllib.parse import urlencode
 import httpx
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT_DIR = ROOT / "output" / "moneyprinter_plus"
-WORK_DIR = ROOT / "temp" / "moneyprinter_plus"
+OUTPUT_DIR = ROOT / "output" / "publish_queue"
+WORK_DIR = ROOT / "temp" / "publish_queue"
 MATERIAL_DIR = ROOT / "data" / "stock_materials"
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".mkv", ".webm"}
@@ -397,7 +397,7 @@ def create_publish_queue(content_dir: str, platforms: list[str], title_prefix: s
     root = Path(content_dir).expanduser()
     if not root.exists():
         raise ValueError("Content directory does not exist.")
-    videos = [item for item in sorted(root.iterdir()) if item.suffix.lower() in {".mp4", ".mov"}]
+    videos = [item for item in sorted(root.rglob("*")) if item.suffix.lower() in {".mp4", ".mov"}]
     tasks = []
     platform_details = {
         platform: PUBLISH_PLATFORMS[platform]

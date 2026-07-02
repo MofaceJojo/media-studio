@@ -24,6 +24,7 @@ class LLMConfig(BaseModel):
     api_key: str = Field(default="", description="LLM API Key")
     base_url: str = Field(default="", description="LLM API Base URL")
     model: str = Field(default="", description="LLM Model Name")
+    timeout_seconds: int = Field(default=25, ge=5, le=300, description="LLM request timeout in seconds")
 
 
 class TTSLocalConfig(BaseModel):
@@ -79,6 +80,15 @@ class VideoSubConfig(BaseModel):
     )
 
 
+class HyperFrameConfig(BaseModel):
+    """HyperFrames local renderer configuration"""
+    enabled: bool = Field(default=True, description="Enable HyperFrames as a local video renderer")
+    command: str = Field(default="npx --yes hyperframes", description="HyperFrames command, e.g. 'npx --yes hyperframes'")
+    quality: str = Field(default="draft", description="Render quality: draft, standard, or high")
+    fps: int = Field(default=30, ge=15, le=60, description="Rendered video FPS")
+    timeout_seconds: int = Field(default=300, ge=30, description="Render timeout in seconds")
+
+
 class ComfyUIConfig(BaseModel):
     """ComfyUI configuration (includes global settings and service-specific configs)"""
     comfyui_url: str = Field(default="http://127.0.0.1:8188", description="ComfyUI Server URL")
@@ -103,13 +113,43 @@ class StockMaterialsConfig(BaseModel):
     pixabay_api_key: str = Field(default="", description="Pixabay API Key")
 
 
+class NotebookLMConfig(BaseModel):
+    """Optional NotebookLM document analysis configuration"""
+    enabled: bool = Field(default=False, description="Enable NotebookLM beta integration")
+    profile: str = Field(default="default", description="NotebookLM local profile name")
+    auth_json_path: str = Field(default="", description="Path to notebooklm-py storage_state.json")
+    language: str = Field(default="Chinese", description="Preferred NotebookLM output language")
+    report_format: str = Field(
+        default="study_guide",
+        description="NotebookLM report format: briefing_doc, study_guide, blog_post, or custom",
+    )
+    timeout_seconds: int = Field(default=300, ge=60, le=1800, description="NotebookLM request timeout in seconds")
+    auto_cleanup_notebook: bool = Field(default=True, description="Delete temporary notebooks after report download")
+
+
+class LocalServiceControlItem(BaseModel):
+    """Config for one local service launcher entry."""
+    workdir: str = Field(default="", description="Local service working directory")
+    command: str = Field(default="", description="Shell command used to launch the service")
+
+
+class LocalServiceControlConfig(BaseModel):
+    """Local service launcher settings for one-click startup."""
+    comfyui: LocalServiceControlItem = Field(default_factory=LocalServiceControlItem)
+    omnivoice: LocalServiceControlItem = Field(default_factory=LocalServiceControlItem)
+    web: LocalServiceControlItem = Field(default_factory=LocalServiceControlItem)
+
+
 class MorpheusVideoStudioConfig(BaseModel):
     """Morpheus Video Studio main configuration"""
     project_name: str = Field(default="Morpheus Video Studio", description="Project name")
     llm: LLMConfig = Field(default_factory=LLMConfig)
     comfyui: ComfyUIConfig = Field(default_factory=ComfyUIConfig)
+    hyperframe: HyperFrameConfig = Field(default_factory=HyperFrameConfig)
     template: TemplateConfig = Field(default_factory=TemplateConfig)
     stock_materials: StockMaterialsConfig = Field(default_factory=StockMaterialsConfig)
+    notebooklm: NotebookLMConfig = Field(default_factory=NotebookLMConfig)
+    local_services: LocalServiceControlConfig = Field(default_factory=LocalServiceControlConfig)
     
     def is_llm_configured(self) -> bool:
         """Check if LLM is properly configured"""

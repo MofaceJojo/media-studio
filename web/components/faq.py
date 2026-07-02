@@ -120,8 +120,8 @@ def render_faq_sidebar():
         faq_content = load_faq_content(current_language)
         
         if faq_content:
-            # Display FAQ in an expander, expanded by default
-            with st.expander(tr('faq.expand_to_view', fallback='FAQ'), expanded=True):
+            # Keep help available without dominating the lightweight workspace.
+            with st.expander(tr('faq.expand_to_view', fallback='FAQ'), expanded=False):
                 # Parse FAQ into sections
                 sections = parse_faq_sections(faq_content)
                 

@@ -112,17 +112,19 @@ class ConfigManager:
             "api_key": self.config.llm.api_key,
             "base_url": self.config.llm.base_url,
             "model": self.config.llm.model,
+            "timeout_seconds": self.config.llm.timeout_seconds,
         }
     
-    def set_llm_config(self, api_key: str, base_url: str, model: str):
+    def set_llm_config(self, api_key: str, base_url: str, model: str, timeout_seconds: Optional[int] = None):
         """Set LLM configuration"""
-        self.update({
-            "llm": {
-                "api_key": api_key,
-                "base_url": base_url,
-                "model": model,
-            }
-        })
+        updates = {
+            "api_key": api_key,
+            "base_url": base_url,
+            "model": model,
+        }
+        if timeout_seconds is not None:
+            updates["timeout_seconds"] = int(timeout_seconds)
+        self.update({"llm": updates})
     
     def get_comfyui_config(self) -> dict:
         """Get ComfyUI configuration as dict"""
@@ -157,6 +159,16 @@ class ConfigManager:
                 "prompt_prefix": self.config.comfyui.video.prompt_prefix,
             }
         }
+
+    def get_hyperframe_config(self) -> dict:
+        """Get HyperFrame configuration as dict"""
+        return {
+            "enabled": self.config.hyperframe.enabled,
+            "command": self.config.hyperframe.command,
+            "quality": self.config.hyperframe.quality,
+            "fps": self.config.hyperframe.fps,
+            "timeout_seconds": self.config.hyperframe.timeout_seconds,
+        }
     
     def set_comfyui_config(
         self, 
@@ -172,6 +184,30 @@ class ConfigManager:
         
         if updates:
             self.update({"comfyui": updates})
+
+    def set_hyperframe_config(
+        self,
+        enabled: Optional[bool] = None,
+        command: Optional[str] = None,
+        quality: Optional[str] = None,
+        fps: Optional[int] = None,
+        timeout_seconds: Optional[int] = None,
+    ):
+        """Set HyperFrame renderer configuration"""
+        updates = {}
+        if enabled is not None:
+            updates["enabled"] = enabled
+        if command is not None:
+            updates["command"] = command
+        if quality is not None:
+            updates["quality"] = quality
+        if fps is not None:
+            updates["fps"] = fps
+        if timeout_seconds is not None:
+            updates["timeout_seconds"] = timeout_seconds
+
+        if updates:
+            self.update({"hyperframe": updates})
 
     def get_stock_materials_config(self) -> dict:
         """Get stock material source configuration as dict"""
@@ -198,3 +234,95 @@ class ConfigManager:
 
         if updates:
             self.update({"stock_materials": updates})
+
+    def get_notebooklm_config(self) -> dict:
+        """Get NotebookLM beta configuration as dict"""
+        return {
+            "enabled": self.config.notebooklm.enabled,
+            "profile": self.config.notebooklm.profile,
+            "auth_json_path": self.config.notebooklm.auth_json_path,
+            "language": self.config.notebooklm.language,
+            "report_format": self.config.notebooklm.report_format,
+            "timeout_seconds": self.config.notebooklm.timeout_seconds,
+            "auto_cleanup_notebook": self.config.notebooklm.auto_cleanup_notebook,
+        }
+
+    def set_notebooklm_config(
+        self,
+        enabled: Optional[bool] = None,
+        profile: Optional[str] = None,
+        auth_json_path: Optional[str] = None,
+        language: Optional[str] = None,
+        report_format: Optional[str] = None,
+        timeout_seconds: Optional[int] = None,
+        auto_cleanup_notebook: Optional[bool] = None,
+    ):
+        """Set NotebookLM beta configuration"""
+        updates = {}
+        if enabled is not None:
+            updates["enabled"] = enabled
+        if profile is not None:
+            updates["profile"] = profile
+        if auth_json_path is not None:
+            updates["auth_json_path"] = auth_json_path
+        if language is not None:
+            updates["language"] = language
+        if report_format is not None:
+            updates["report_format"] = report_format
+        if timeout_seconds is not None:
+            updates["timeout_seconds"] = timeout_seconds
+        if auto_cleanup_notebook is not None:
+            updates["auto_cleanup_notebook"] = auto_cleanup_notebook
+
+        if updates:
+            self.update({"notebooklm": updates})
+
+    def get_local_services_config(self) -> dict:
+        """Get local one-click service launcher config as dict"""
+        return {
+            "comfyui": {
+                "workdir": self.config.local_services.comfyui.workdir,
+                "command": self.config.local_services.comfyui.command,
+            },
+            "omnivoice": {
+                "workdir": self.config.local_services.omnivoice.workdir,
+                "command": self.config.local_services.omnivoice.command,
+            },
+            "web": {
+                "workdir": self.config.local_services.web.workdir,
+                "command": self.config.local_services.web.command,
+            },
+        }
+
+    def set_local_services_config(
+        self,
+        comfyui_workdir: Optional[str] = None,
+        comfyui_command: Optional[str] = None,
+        omnivoice_workdir: Optional[str] = None,
+        omnivoice_command: Optional[str] = None,
+        web_workdir: Optional[str] = None,
+        web_command: Optional[str] = None,
+    ):
+        """Set local one-click service launcher config"""
+        updates: dict[str, dict[str, str]] = {}
+        if comfyui_workdir is not None or comfyui_command is not None:
+            updates["comfyui"] = {}
+            if comfyui_workdir is not None:
+                updates["comfyui"]["workdir"] = comfyui_workdir
+            if comfyui_command is not None:
+                updates["comfyui"]["command"] = comfyui_command
+        if omnivoice_workdir is not None or omnivoice_command is not None:
+            updates["omnivoice"] = {}
+            if omnivoice_workdir is not None:
+                updates["omnivoice"]["workdir"] = omnivoice_workdir
+            if omnivoice_command is not None:
+                updates["omnivoice"]["command"] = omnivoice_command
+        if web_workdir is not None or web_command is not None:
+            updates["web"] = {}
+            if web_workdir is not None:
+                updates["web"]["workdir"] = web_workdir
+            if web_command is not None:
+                updates["web"]["command"] = web_command
+
+        if updates:
+            self.update({"local_services": updates})

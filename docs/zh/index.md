@@ -75,9 +75,7 @@
 
 Morpheus Video Studio 的设计受到以下优秀开源项目的启发：
 
-- [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) - 优秀的视频生成工具
 - [NarratoAI](https://github.com/linyqh/NarratoAI) - 影视解说自动化工具
-- [MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus) - 视频创作平台
 - [ComfyKit](https://github.com/puke3615/ComfyKit) - ComfyUI 工作流封装库
 
 感谢这些项目的开源精神！🙏

@@ -1,7 +1,7 @@
 [project]
 name = "morpheus-video-studio"
 version = "0.1.15"
-description = "Local-first AI short-video creation studio with MoneyPrinter tools"
+description = "Local-first AI short-video creation studio"
 authors = [
     {name = "Morpheus Studio"}
 ]

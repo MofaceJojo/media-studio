@@ -22,7 +22,7 @@ import streamlit as st
 
 # Import components
 from web.components.content_input import render_bgm_section, render_content_input
-from web.components.moneyprinter_config import render_moneyprinter_config
+from web.components.video_generation_config import render_video_generation_config
 from web.components.output_preview import render_output_preview
 from web.components.style_config import render_style_config
 from web.i18n import tr
@@ -46,6 +46,14 @@ class StandardPipelineUI(PipelineUI):
         return tr("pipeline.quick_create.description")
     
     def render(self, morpheus_video_studio: Any):
+        # Quick-create is video-first. Pre-seed the template picker on first load
+        # so users don't accidentally generate static image slideshows.
+        if not st.session_state.get("quick_create_template_defaults_initialized"):
+            st.session_state["template_type_selector"] = "video"
+            st.session_state.pop("selected_template", None)
+            st.session_state.pop("last_template_type", None)
+            st.session_state["quick_create_template_defaults_initialized"] = True
+
         content_tab, visual_tab, audio_tab = st.tabs(
             ["1. 文案与生成", "2. 画面与素材", "3. 声音与字幕"]
         )
@@ -53,7 +61,7 @@ class StandardPipelineUI(PipelineUI):
         with content_tab:
             input_col, output_col = st.columns([1.15, 0.85], gap="large")
             with input_col:
-                content_params = render_content_input()
+                content_params = render_content_input(morpheus_video_studio)
             with output_col:
                 output_slot = st.container()
 
@@ -70,7 +78,7 @@ class StandardPipelineUI(PipelineUI):
             video_slot = st.container()
             style_params = render_style_config(morpheus_video_studio, tts_container=tts_slot)
 
-        moneyprinter_params = render_moneyprinter_config(
+        video_generation_params = render_video_generation_config(
             style_params,
             video_container=video_slot,
             subtitle_container=subtitle_slot,
@@ -81,7 +89,7 @@ class StandardPipelineUI(PipelineUI):
             **content_params,
             **bgm_params,
             **style_params,
-            **moneyprinter_params,
+            **video_generation_params,
         }
 
         if video_params.get("video_count", 1) > 1 and not video_params.get("batch_mode"):

@@ -30,6 +30,7 @@ from web.pipelines import digital_human
 from web.pipelines import i2v
 from web.pipelines import action_transfer
 from web.pipelines import book_pdf
+from web.pipelines import seedance_script
 from web.pipelines import stock_materials
 from web.pipelines import video_mix
 from web.pipelines import video_merge

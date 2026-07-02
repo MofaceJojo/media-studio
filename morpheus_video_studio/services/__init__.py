@@ -14,39 +14,65 @@
 Morpheus Video Studio Services
 
 Core services providing atomic capabilities.
-
-Services:
-- LLMService: LLM text generation
-- TTSService: Text-to-speech
-- MediaService: Media generation (image & video)
-- VideoService: Video processing
-- FrameProcessor: Frame processing orchestrator
-- PersistenceService: Task metadata and storyboard persistence
-- HistoryManager: History management business logic
-- ComfyBaseService: Base class for ComfyUI-based services
 """
 
-from morpheus_video_studio.services.comfy_base_service import ComfyBaseService
-from morpheus_video_studio.services.llm_service import LLMService
-from morpheus_video_studio.services.tts_service import TTSService
-from morpheus_video_studio.services.media import MediaService
-from morpheus_video_studio.services.video import VideoService
-from morpheus_video_studio.services.frame_processor import FrameProcessor
-from morpheus_video_studio.services.persistence import PersistenceService
-from morpheus_video_studio.services.history_manager import HistoryManager
+from typing import TYPE_CHECKING
 
-# Backward compatibility alias
-ImageService = MediaService
+if TYPE_CHECKING:
+    from morpheus_video_studio.services.comfy_base_service import ComfyBaseService
+    from morpheus_video_studio.services.frame_processor import FrameProcessor
+    from morpheus_video_studio.services.history_manager import HistoryManager
+    from morpheus_video_studio.services.llm_service import LLMService
+    from morpheus_video_studio.services.media import MediaService
+    from morpheus_video_studio.services.persistence import PersistenceService
+    from morpheus_video_studio.services.tts_service import TTSService
+    from morpheus_video_studio.services.video import VideoService
+
 
 __all__ = [
     "ComfyBaseService",
     "LLMService",
     "TTSService",
     "MediaService",
-    "ImageService",  # Backward compatibility
+    "ImageService",
     "VideoService",
     "FrameProcessor",
     "PersistenceService",
     "HistoryManager",
 ]
 
+
+def __getattr__(name: str):
+    if name == "ComfyBaseService":
+        from morpheus_video_studio.services.comfy_base_service import ComfyBaseService
+
+        return ComfyBaseService
+    if name == "LLMService":
+        from morpheus_video_studio.services.llm_service import LLMService
+
+        return LLMService
+    if name == "TTSService":
+        from morpheus_video_studio.services.tts_service import TTSService
+
+        return TTSService
+    if name in {"MediaService", "ImageService"}:
+        from morpheus_video_studio.services.media import MediaService
+
+        return MediaService
+    if name == "VideoService":
+        from morpheus_video_studio.services.video import VideoService
+
+        return VideoService
+    if name == "FrameProcessor":
+        from morpheus_video_studio.services.frame_processor import FrameProcessor
+
+        return FrameProcessor
+    if name == "PersistenceService":
+        from morpheus_video_studio.services.persistence import PersistenceService
+
+        return PersistenceService
+    if name == "HistoryManager":
+        from morpheus_video_studio.services.history_manager import HistoryManager
+
+        return HistoryManager
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

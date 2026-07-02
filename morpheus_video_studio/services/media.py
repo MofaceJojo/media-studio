@@ -17,7 +17,10 @@ Supports both image and video generation workflows.
 Automatically detects output type based on ExecuteResult.
 """
 
+import json
 import random
+import re
+from pathlib import Path
 from typing import Optional
 
 from comfykit import ComfyKit
@@ -26,7 +29,7 @@ from loguru import logger
 from morpheus_video_studio.services.comfy_base_service import ComfyBaseService
 from morpheus_video_studio.models.media import MediaResult
 from morpheus_video_studio.config import config_manager
-from morpheus_video_studio.services.moneyprinter_tools import download_material, search_stock_materials
+from morpheus_video_studio.services.stock_publish_tools import download_material, search_stock_materials
 from morpheus_video_studio.utils.comfyui_util import check_comfyui_health
 
 
@@ -36,6 +39,14 @@ DEFAULT_NEGATIVE_PROMPT = (
     "missing limbs, fused limbs, bad hands, malformed hands, extra fingers, "
     "missing fingers, fused fingers, long neck, disfigured, uncanny, text, "
     "watermark, logo, cropped head"
+)
+
+LOCAL_LIBRARY_MEDIA_EXTENSIONS = {".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm"}
+LOCAL_LIBRARY_ROOT_CANDIDATES = (
+    "media_library",
+    "assets/media_library",
+    "library/media_library",
+    "assets/ip_library",
 )
 
 
@@ -207,6 +218,27 @@ class MediaService(ComfyBaseService):
                 comfyui_url="http://192.168.1.100:8188"
             )
         """
+        if workflow and workflow.startswith("hyperframe/"):
+            if media_type != "video":
+                raise ValueError("HyperFrame media generation only supports video templates.")
+            try:
+                return await self.core.hyperframe.render_media(
+                    prompt=prompt,
+                    width=width,
+                    height=height,
+                    duration=duration,
+                    **params,
+                )
+            except Exception as exc:
+                logger.warning(f"HyperFrame media generation failed; falling back to stock materials: {exc}")
+                return await self._generate_from_stock_materials(
+                    prompt=prompt,
+                    provider="all",
+                    width=width,
+                    height=height,
+                    selection_mode=params.get("stock_selection_mode", "sequential"),
+                )
+
         if workflow and workflow.startswith("stock/"):
             provider = workflow.split("/", 1)[1] or "all"
             try:
@@ -360,6 +392,11 @@ class MediaService(ComfyBaseService):
         if not providers:
             raise RuntimeError("ComfyUI 不可用，且未配置 Pexels/Pixabay API Key，无法使用素材兜底。")
 
+        local_media = self._find_local_library_media(prompt, selection_mode=selection_mode)
+        if local_media:
+            logger.info(f"Using local library media: {local_media}")
+            return MediaResult(media_type="video", url=str(local_media), duration=None)
+
         orientation = "portrait"
         if width and height:
             if width > height:
@@ -367,20 +404,9 @@ class MediaService(ComfyBaseService):
             elif width == height:
                 orientation = "square"
 
-        primary_query = " ".join(prompt.split()[:12]) or "background video"
-        if len(primary_query) > 120 or not any(ch.isascii() and ch.isalpha() for ch in primary_query):
-            primary_query = "cinematic background video"
-        fallback_queries = [
-            "cinematic background video",
-            "city night",
-            "nature landscape",
-            "people lifestyle",
-            "abstract background",
-        ]
-        queries = []
-        for query in [primary_query, *fallback_queries]:
-            if query and query not in queries:
-                queries.append(query)
+        cleaned_prompt = self._strip_stock_prompt_prefix(prompt)
+        queries = await self._build_stock_query_plan(cleaned_prompt)
+        logger.info(f"Stock query plan: {queries}")
 
         candidates = []
         for query in queries:
@@ -389,7 +415,7 @@ class MediaService(ComfyBaseService):
                 api_key = stock_config.get(f"{provider_name}_api_key", "").strip()
                 try:
                     candidates.extend(
-                        await search_stock_materials(provider_name, api_key, query, orientation, per_page=4)
+                        await search_stock_materials(provider_name, api_key, query, orientation, per_page=8)
                     )
                 except Exception as exc:
                     logger.warning(f"Stock material search failed for {provider_name}: {exc}")
@@ -413,6 +439,262 @@ class MediaService(ComfyBaseService):
                 logger.warning(f"Stock material download failed for {material.provider}: {exc}")
 
         raise RuntimeError(f"Pexels/Pixabay 返回了素材，但下载均失败：{last_download_error}")
+
+    def _find_local_library_media(self, prompt: str, selection_mode: str = "sequential") -> Optional[Path]:
+        """
+        Search local licensed media libraries before public stock providers.
+
+        This is the path for title-specific footage such as TV dramas or movies.
+        Public stock APIs will not reliably return copyrighted works like 水浒传,
+        so we let users keep licensed/local clips in a conventional library and
+        match by title aliases.
+        """
+        normalized_prompt = self._normalize_lookup_text(prompt)
+        if not normalized_prompt:
+            return None
+
+        best_folder: Optional[Path] = None
+        best_score = 0
+        best_alias = ""
+
+        for root in self._iter_local_library_roots():
+            for folder in root.iterdir():
+                if not folder.is_dir():
+                    continue
+                score, alias = self._score_library_folder(folder, normalized_prompt)
+                if score > best_score:
+                    best_folder = folder
+                    best_score = score
+                    best_alias = alias
+
+        if not best_folder:
+            return None
+
+        media_files = sorted(
+            item for item in best_folder.rglob("*")
+            if item.is_file() and item.suffix.lower() in LOCAL_LIBRARY_MEDIA_EXTENSIONS
+        )
+        if not media_files:
+            logger.warning(f"Matched local library folder but found no media files: {best_folder}")
+            return None
+
+        if selection_mode == "random":
+            return random.choice(media_files)
+
+        logger.info(
+            f"Matched local media library folder '{best_folder.name}' via alias '{best_alias}' "
+            f"({len(media_files)} files)"
+        )
+        return media_files[0]
+
+    def _iter_local_library_roots(self) -> list[Path]:
+        cwd = Path.cwd()
+        roots: list[Path] = []
+        seen: set[str] = set()
+        for relative in LOCAL_LIBRARY_ROOT_CANDIDATES:
+            path = (cwd / relative).resolve()
+            if path.is_dir() and str(path) not in seen:
+                roots.append(path)
+                seen.add(str(path))
+        return roots
+
+    def _score_library_folder(self, folder: Path, normalized_prompt: str) -> tuple[int, str]:
+        aliases = self._load_library_aliases(folder)
+        best_score = 0
+        best_alias = ""
+        for alias in aliases:
+            normalized_alias = self._normalize_lookup_text(alias)
+            if not normalized_alias:
+                continue
+            if normalized_alias in normalized_prompt:
+                score = len(normalized_alias)
+                if score > best_score:
+                    best_score = score
+                    best_alias = alias
+        return best_score, best_alias
+
+    def _load_library_aliases(self, folder: Path) -> list[str]:
+        aliases = {folder.name}
+
+        # Support folder names like "水浒传__水浒__all-men-are-brothers"
+        aliases.update(part.strip() for part in folder.name.split("__") if part.strip())
+        aliases.update(part.strip() for part in folder.name.split(",") if part.strip())
+
+        aliases_file = folder / "aliases.txt"
+        if aliases_file.is_file():
+            try:
+                aliases.update(
+                    line.strip()
+                    for line in aliases_file.read_text(encoding="utf-8").splitlines()
+                    if line.strip()
+                )
+            except Exception as exc:
+                logger.warning(f"Failed to read aliases.txt from {folder}: {exc}")
+
+        manifest_file = folder / "manifest.json"
+        if manifest_file.is_file():
+            try:
+                manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+                if isinstance(manifest, dict):
+                    title = str(manifest.get("title", "")).strip()
+                    if title:
+                        aliases.add(title)
+                    for item in manifest.get("aliases", []) or []:
+                        value = str(item).strip()
+                        if value:
+                            aliases.add(value)
+            except Exception as exc:
+                logger.warning(f"Failed to read manifest.json from {folder}: {exc}")
+
+        return sorted(aliases)
+
+    def _normalize_lookup_text(self, value: str) -> str:
+        value = str(value or "").lower()
+        value = re.sub(r"[\s\-_]+", "", value)
+        value = re.sub(r"[^0-9a-z\u4e00-\u9fff]", "", value)
+        return value
+
+    def _strip_stock_prompt_prefix(self, prompt: str) -> str:
+        """
+        Remove style-oriented prompt prefixes before searching stock footage.
+
+        Stock providers need semantic search terms, not visual-style boilerplate.
+        """
+        cleaned = (prompt or "").strip()
+        if not cleaned:
+            return ""
+
+        comfy_config = self.core.config.get("comfyui", {}) if self.core else {}
+        prefixes = [
+            comfy_config.get("image", {}).get("prompt_prefix", ""),
+            comfy_config.get("video", {}).get("prompt_prefix", ""),
+        ]
+        for prefix in prefixes:
+            prefix = (prefix or "").strip().rstrip(",")
+            if not prefix:
+                continue
+            prefixed = f"{prefix}, "
+            if cleaned.startswith(prefixed):
+                return cleaned[len(prefixed):].strip()
+            if cleaned == prefix:
+                return ""
+        return cleaned
+
+    async def _build_stock_query_plan(self, prompt: str) -> list[str]:
+        """
+        Build an ordered set of stock-footage queries.
+
+        We prefer semantic fallbacks over generic wallpaper-like queries so that
+        missed exact matches still stay close to the script's visual language.
+        """
+        cleaned = re.sub(r"\s+", " ", (prompt or "").strip())
+        if not cleaned:
+            return ["background video"]
+
+        queries: list[str] = []
+
+        def add_query(value: str):
+            normalized = re.sub(r"[^A-Za-z0-9\s-]", " ", str(value or ""))
+            normalized = re.sub(r"\s+", " ", normalized).strip(" -")
+            if not normalized:
+                return
+            lowered = normalized.lower()
+            if lowered not in {item.lower() for item in queries}:
+                queries.append(normalized)
+
+        ascii_candidate = " ".join(cleaned.split()[:12]).strip(" ,.;:-")
+        if ascii_candidate and len(ascii_candidate) <= 120 and any(
+            ch.isascii() and ch.isalpha() for ch in ascii_candidate
+        ):
+            add_query(ascii_candidate)
+
+        for query in await self._build_stock_queries_via_llm(cleaned):
+            add_query(query)
+
+        for query in self._build_stock_heuristic_queries(cleaned):
+            add_query(query)
+
+        return queries or ["background video"]
+
+    async def _build_stock_queries_via_llm(self, prompt: str) -> list[str]:
+        """Ask the configured LLM for a few stock-footage queries with semantic fallbacks."""
+        cleaned = re.sub(r"\s+", " ", (prompt or "").strip())
+        if not cleaned:
+            return []
+
+        llm = getattr(self.core, "llm", None) if self.core else None
+        llm_config = self.core.config.get("llm", {}) if self.core else {}
+        if not (llm and llm_config.get("api_key") and llm_config.get("model")):
+            return []
+
+        try:
+            response = await llm(
+                (
+                    "You are preparing search queries for stock-footage websites like Pexels and Pixabay.\n"
+                    "Given one video idea, return JSON with 3 short English search queries ordered from best to fallback.\n"
+                    "Rules:\n"
+                    "1. Query 1 = exact subject if filmable.\n"
+                    "2. Query 2 = realistic scene or activity that conveys the same meaning.\n"
+                    "3. Query 3 = visual substitute or metaphor that still matches the narration.\n"
+                    "4. Each query must be 2 to 6 words.\n"
+                    "5. Avoid generic filler like cinematic background, city night, abstract background.\n"
+                    "6. Prefer filmable real-world footage over named fictional IP when the exact subject is unlikely to exist.\n\n"
+                    f'Idea: {cleaned}\n\n'
+                    'Return only JSON like {"queries":["query 1","query 2","query 3"]}.'
+                ),
+                temperature=0.2,
+                max_tokens=120,
+            )
+            raw = str(response or "").strip()
+            json_match = re.search(r"\{[\s\S]*\}", raw)
+            payload = json.loads(json_match.group(0) if json_match else raw)
+            queries = payload.get("queries", []) if isinstance(payload, dict) else []
+            if isinstance(queries, list):
+                return [str(item) for item in queries if str(item).strip()]
+        except Exception as exc:
+            logger.warning(f"Failed to derive stock query plan via LLM: {exc}")
+
+        return []
+
+    def _build_stock_heuristic_queries(self, prompt: str) -> list[str]:
+        """Fallback semantic queries when LLM planning is unavailable or sparse."""
+        lowered = (prompt or "").lower()
+        queries: list[str] = []
+
+        if any(token in prompt for token in ("国漫", "动漫", "动画", "番剧")) or any(
+            token in lowered for token in ("anime", "animation", "cartoon")
+        ):
+            queries.extend([
+                "animation studio artist",
+                "anime fans watching screen",
+                "comic convention crowd",
+            ])
+
+        if any(token in prompt for token in ("排名", "倒数", "最佳", "盘点", "前十", "top")) or any(
+            token in lowered for token in ("ranking", "countdown", "best", "top 10", "review")
+        ):
+            queries.extend([
+                "audience reaction watching screen",
+                "people discussing favorites",
+                "dramatic reveal closeup",
+            ])
+
+        if any(token in prompt for token in ("热血", "战斗", "英雄", "冒险")) or any(
+            token in lowered for token in ("battle", "hero", "adventure", "warrior")
+        ):
+            queries.extend([
+                "hero silhouette dramatic",
+                "team running cinematic",
+                "fantasy warrior action",
+            ])
+
+        if not queries:
+            compact = re.sub(r"[^\w\s]", " ", prompt).strip()
+            compact = " ".join(compact.split()[:6])
+            if compact:
+                queries.append(compact)
+
+        return queries
 
     def _default_selfhost_workflow(self, media_type: str) -> Optional[str]:
         comfy_config = self.core.config.get("comfyui", {}) if self.core else {}

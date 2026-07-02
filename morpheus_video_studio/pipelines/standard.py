@@ -38,8 +38,10 @@ from morpheus_video_studio.models.storyboard import (
 from morpheus_video_studio.utils.content_generators import (
     generate_title,
     generate_narrations_from_topic,
+    generate_narrations_from_content,
     split_narration_script,
     generate_image_prompts,
+    generate_video_prompts,
 )
 from morpheus_video_studio.utils.os_util import (
     create_task_output_dir,
@@ -121,12 +123,27 @@ class StandardPipeline(LinearVideoPipeline):
                 max_words=max_words
             )
             logger.info(f"✅ Generated {len(ctx.narrations)} narrations")
+        elif mode == "document":
+            self._report_progress(ctx.progress_callback, "generating_narrations", 0.05)
+            ctx.narrations = await generate_narrations_from_content(
+                self.llm,
+                content=text,
+                n_scenes=n_scenes,
+                min_words=min_words,
+                max_words=max_words
+            )
+            logger.info(f"✅ Generated {len(ctx.narrations)} narrations from document")
         else:  # fixed
             self._report_progress(ctx.progress_callback, "splitting_script", 0.05)
             split_mode = ctx.params.get("split_mode", "paragraph")
-            ctx.narrations = await split_narration_script(text, split_mode=split_mode)
+            ctx.narrations = await split_narration_script(
+                text,
+                split_mode=split_mode,
+                target_segments=n_scenes,
+                max_chars_per_segment=max(24, int(max_words * 3)),
+            )
             logger.info(f"✅ Split script into {len(ctx.narrations)} segments (mode={split_mode})")
-            logger.info(f"   Note: n_scenes={n_scenes} is ignored in fixed mode")
+            logger.info(f"   Target scene count for splitting: {n_scenes}")
 
     async def determine_title(self, ctx: PipelineContext):
         """Step 3: Determine or generate video title."""
@@ -147,6 +164,9 @@ class StandardPipeline(LinearVideoPipeline):
             if mode == "generate":
                 ctx.title = await generate_title(self.llm, text, strategy="auto")
                 logger.info(f"   Title: '{ctx.title}' (auto-generated)")
+            elif mode == "document":
+                ctx.title = await generate_title(self.llm, text, strategy="llm")
+                logger.info(f"   Title: '{ctx.title}' (document-generated)")
             else:  # fixed
                 ctx.title = await generate_title(self.llm, text, strategy="llm")
                 logger.info(f"   Title: '{ctx.title}' (LLM-generated)")
@@ -175,16 +195,19 @@ class StandardPipeline(LinearVideoPipeline):
             logger.info(f"⚡ Static template - skipping media generation pipeline")
             logger.info(f"   💡 Benefits: Faster generation + Lower cost + No ComfyUI dependency")
         
-        # Turbo stock mode follows MoneyPrinterTurbo's material-first idea:
-        # avoid extra visual-prompt LLM calls and search stock videos from the
-        # narration/title directly.
+        # Stock video modes should stay semantic-first. Converting narrations
+        # into static illustration prompts before searching stock footage
+        # degrades relevance.
         if template_requires_media:
-            if media_workflow == "stock/turbo" or media_strategy == "stock_turbo":
+            if (
+                media_workflow.startswith("stock/")
+                or media_strategy in {"stock_turbo", "stock_first"}
+            ):
                 ctx.image_prompts = [
                     f"{ctx.title}. {narration}".strip(". ")
                     for narration in ctx.narrations
                 ]
-                logger.info("⚡ Turbo stock mode - using narrations as stock material queries")
+                logger.info("🎬 Stock video mode - using title/narrations as stock material queries")
                 return
 
             self._report_progress(ctx.progress_callback, "generating_image_prompts", 0.15)
@@ -213,14 +236,24 @@ class StandardPipeline(LinearVideoPipeline):
                         extra_info=message
                     )
                 
-                # Generate base image prompts
-                base_image_prompts = await generate_image_prompts(
-                    self.llm,
-                    narrations=ctx.narrations,
-                    min_words=min_words,
-                    max_words=max_words,
-                    progress_callback=image_prompt_progress
-                )
+                # Video workflows need motion-oriented prompts; image workflows
+                # still use static image prompts.
+                if template_type == "video":
+                    base_image_prompts = await generate_video_prompts(
+                        self.llm,
+                        narrations=ctx.narrations,
+                        min_words=min_words,
+                        max_words=max_words,
+                        progress_callback=image_prompt_progress,
+                    )
+                else:
+                    base_image_prompts = await generate_image_prompts(
+                        self.llm,
+                        narrations=ctx.narrations,
+                        min_words=min_words,
+                        max_words=max_words,
+                        progress_callback=image_prompt_progress,
+                    )
                 
                 # Apply prompt prefix
                 media_config_name = "video" if template_type == "video" else "image"
@@ -282,6 +315,8 @@ class StandardPipeline(LinearVideoPipeline):
             min_image_prompt_words=ctx.params.get("min_image_prompt_words", 30),
             max_image_prompt_words=ctx.params.get("max_image_prompt_words", 60),
             video_fps=ctx.params.get("video_fps", 30),
+            min_segment_duration=float(ctx.params.get("min_segment_duration", 0.0)),
+            scene_trailing_silence=float(ctx.params.get("scene_trailing_silence", 0.0)),
             tts_inference_mode=tts_inference_mode or "local",
             voice_id=final_voice_id,
             tts_workflow=final_tts_workflow,
@@ -309,6 +344,8 @@ class StandardPipeline(LinearVideoPipeline):
             ),
             template_params=ctx.params.get("template_params"),
             stock_selection_mode=ctx.params.get("stock_selection_mode", "sequential"),
+            image_motion_mode=ctx.params.get("image_motion_mode", "float"),
+            image_motion_choices=ctx.params.get("image_motion_choices", ["float"]),
             subtitle_customization_enabled=ctx.params.get("subtitle_customization_enabled", False),
             subtitle_enabled=ctx.params.get("subtitle_enabled", True),
             subtitle_font=ctx.params.get("subtitle_font", "Microsoft YaHei"),
@@ -455,7 +492,9 @@ class StandardPipeline(LinearVideoPipeline):
         final_video_path = video_service.concat_videos(
             videos=segment_paths,
             output=ctx.final_video_path,
+            audio_tracks=[frame.audio_path for frame in storyboard.frames],
             transition=ctx.params.get("transition_mode", "none"),
+            transition_choices=ctx.params.get("transition_choices"),
             transition_duration=ctx.params.get("transition_duration", 0.5),
             bgm_path=ctx.params.get("bgm_path"),
             bgm_volume=ctx.params.get("bgm_volume", 0.2),

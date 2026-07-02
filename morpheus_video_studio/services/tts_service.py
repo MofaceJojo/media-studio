@@ -14,6 +14,7 @@
 TTS (Text-to-Speech) Service - Supports both local and ComfyUI inference
 """
 
+import asyncio
 import os
 import uuid
 from pathlib import Path
@@ -25,7 +26,9 @@ from loguru import logger
 
 from morpheus_video_studio.services.comfy_base_service import ComfyBaseService
 from morpheus_video_studio.utils.omnivoice_util import (
+    fetch_omnivoice_model_status,
     format_omnivoice_error,
+    generate_omnivoice_openai_speech,
     normalize_omnivoice_instruct,
 )
 from morpheus_video_studio.utils.tts_util import edge_tts
@@ -55,6 +58,38 @@ class TTSService(ComfyBaseService):
     WORKFLOW_PREFIX = "tts_"
     DEFAULT_WORKFLOW = None  # No hardcoded default, must be configured
     WORKFLOWS_DIR = "workflows"
+    OMNIVOICE_TIMEOUT_READY_SECONDS = 600.0
+    OMNIVOICE_TIMEOUT_COLD_START_SECONDS = 1200.0
+    _OMNIVOICE_FORMAT_ALIASES = {
+        ".mp3": "mp3",
+        ".wav": "wav",
+        ".flac": "flac",
+        ".ogg": "opus",
+        ".opus": "opus",
+        ".aac": "aac",
+        ".m4a": "aac",
+        ".pcm": "pcm",
+    }
+
+    @staticmethod
+    def _is_omnivoice_stuck_status(model_status: Optional[dict]) -> bool:
+        """Detect the pseudo-ready state where Omni reports ready but never finishes loading."""
+        if not model_status:
+            return False
+        detail = (model_status.get("detail") or model_status.get("sub_stage") or "").strip()
+        return (
+            bool(model_status.get("loading"))
+            and not bool(model_status.get("loaded"))
+            and detail == "Model ready"
+        )
+
+    @classmethod
+    def _infer_omnivoice_response_format(cls, output_path: Optional[str], requested_format: str) -> str:
+        if output_path:
+            suffix = Path(output_path).suffix.lower()
+            if suffix in cls._OMNIVOICE_FORMAT_ALIASES:
+                return cls._OMNIVOICE_FORMAT_ALIASES[suffix]
+        return requested_format
     
     def __init__(self, config: dict, core=None):
         """
@@ -235,6 +270,8 @@ class TTSService(ComfyBaseService):
             instruct if instruct is not None else omni_config.get("instruct")
         )
 
+        response_format = self._infer_omnivoice_response_format(output_path, response_format)
+
         if not output_path:
             unique_id = uuid.uuid4().hex
             output_path = f"output/{unique_id}.{response_format}"
@@ -242,32 +279,55 @@ class TTSService(ComfyBaseService):
         else:
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
-        payload = {
-            "model": final_model,
-            "input": text,
-            "voice": final_voice,
-            "response_format": response_format,
-            "speed": final_speed,
-        }
-        if final_language:
-            payload["language"] = final_language
-        if final_instruct:
-            payload["instruct"] = final_instruct
-        payload.update({k: v for k, v in params.items() if v is not None})
-
         logger.info(
             f"🎙️  Using local OmniVoice TTS: {final_base_url}, "
             f"voice={final_voice}, speed={final_speed}x, instruct={final_instruct!r}"
         )
-        timeout = httpx.Timeout(connect=8.0, read=120.0, write=30.0, pool=30.0)
+        model_status = None
+        read_timeout = self.OMNIVOICE_TIMEOUT_READY_SECONDS
         try:
-            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
-                response = await client.post(f"{final_base_url}/v1/audio/speech", json=payload)
-                response.raise_for_status()
-                Path(output_path).write_bytes(response.content)
-        except httpx.HTTPError as exc:
+            model_status = fetch_omnivoice_model_status(final_base_url, timeout=4.0)
+            if model_status.get("status") in {"idle", "loading"} or model_status.get("loading"):
+                read_timeout = self.OMNIVOICE_TIMEOUT_COLD_START_SECONDS
+            if self._is_omnivoice_stuck_status(model_status):
+                raise RuntimeError(
+                    "OmniVoice 后端状态异常：模型显示 `Model ready`，但仍停留在 loading。"
+                    "请先重启 OmniVoice Studio，再重试。"
+                )
+        except Exception as exc:
+            if isinstance(exc, RuntimeError):
+                raise
+            logger.warning(f"Failed to read OmniVoice model status before TTS: {exc}")
+
+        try:
+            generated = await asyncio.to_thread(
+                generate_omnivoice_openai_speech,
+                final_base_url,
+                text=text,
+                model=final_model,
+                voice=final_voice,
+                response_format=response_format,
+                language=final_language,
+                instruct=final_instruct,
+                speed=final_speed,
+                seed=params.get("seed"),
+                duration=params.get("duration"),
+                timeout=read_timeout,
+            )
+            Path(output_path).write_bytes(generated["audio_bytes"])
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            try:
+                model_status = fetch_omnivoice_model_status(final_base_url, timeout=4.0)
+            except Exception as status_exc:
+                logger.warning(f"Failed to refresh OmniVoice model status after TTS error: {status_exc}")
             logger.error(f"OmniVoice TTS failed: {exc}")
-            raise RuntimeError(format_omnivoice_error(exc)) from exc
+            raise RuntimeError(
+                format_omnivoice_error(
+                    exc,
+                    model_status=model_status,
+                    timeout_seconds=read_timeout,
+                )
+            ) from exc
 
         logger.info(f"✅ Generated audio (OmniVoice): {output_path}")
         return output_path

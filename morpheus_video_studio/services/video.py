@@ -24,7 +24,9 @@ Features:
 Note: Requires FFmpeg to be installed on the system.
 """
 
+import hashlib
 import os
+import random
 import shutil
 import tempfile
 import uuid
@@ -39,6 +41,41 @@ from morpheus_video_studio.utils.os_util import (
     list_resource_files,
     resource_exists
 )
+
+
+XFADES = {
+    "fade",
+    "fadeblack",
+    "fadewhite",
+    "fadefast",
+    "fadeslow",
+    "dissolve",
+    "wipeleft",
+    "wiperight",
+    "wipeup",
+    "wipedown",
+    "slideleft",
+    "slideright",
+    "slideup",
+    "slidedown",
+    "circleopen",
+    "circleclose",
+    "circlecrop",
+    "rectcrop",
+    "zoomin",
+    "smoothleft",
+    "smoothright",
+    "smoothup",
+    "smoothdown",
+    "coverleft",
+    "coverright",
+    "coverup",
+    "coverdown",
+    "revealleft",
+    "revealright",
+    "revealup",
+    "revealdown",
+}
 
 
 def check_ffmpeg() -> None:
@@ -110,11 +147,14 @@ class VideoService:
         videos: List[str],
         output: str,
         method: Literal["demuxer", "filter"] = "demuxer",
+        audio_tracks: Optional[List[str]] = None,
         bgm_path: Optional[str] = None,
         bgm_volume: float = 0.2,
         bgm_mode: Literal["once", "loop"] = "loop",
-        transition: Literal["none", "fade"] = "none",
+        transition: str = "none",
+        transition_choices: Optional[List[str]] = None,
         transition_duration: float = 0.5,
+        transition_audio_delay: float = 0.0,
     ) -> str:
         """
         Concatenate multiple videos into one
@@ -134,6 +174,15 @@ class VideoService:
             raise ValueError("Videos list cannot be empty")
         
         if len(videos) == 1:
+            if bgm_path:
+                logger.info(f"Only one video provided, adding BGM directly to {output}")
+                return self._add_bgm_to_video(
+                    video=videos[0],
+                    bgm_path=bgm_path,
+                    output=output,
+                    volume=bgm_volume,
+                    mode=bgm_mode,
+                )
             logger.info(f"Only one video provided, copying to {output}")
             shutil.copy(videos[0], output)
             return output
@@ -145,8 +194,16 @@ class VideoService:
             # If BGM needed, concatenate to temp file first
             temp_output = output.replace('.mp4', '_no_bgm.mp4')
             concat_result = (
-                self._concat_xfade(videos, temp_output, transition_duration)
-                if transition == "fade"
+                self._concat_xfade(
+                    videos,
+                    temp_output,
+                    transition_duration,
+                    transition,
+                    transition_choices,
+                    transition_audio_delay,
+                    audio_tracks,
+                )
+                if self._should_use_xfade(transition, transition_choices)
                 else self._concat_demuxer(videos, temp_output) if method == "demuxer"
                 else self._concat_filter(videos, temp_output)
             )
@@ -168,58 +225,264 @@ class VideoService:
             return final_result
         else:
             # No BGM, direct concatenation
-            if transition == "fade":
-                return self._concat_xfade(videos, output, transition_duration)
+            if self._should_use_xfade(transition, transition_choices):
+                return self._concat_xfade(
+                    videos,
+                    output,
+                    transition_duration,
+                    transition,
+                    transition_choices,
+                    transition_audio_delay,
+                    audio_tracks,
+                )
             if method == "demuxer":
                 return self._concat_demuxer(videos, output)
             else:
                 return self._concat_filter(videos, output)
 
-    def _concat_xfade(self, videos: List[str], output: str, duration: float = 0.5) -> str:
-        """Concatenate clips with synchronized video/audio crossfades."""
+    def _concat_xfade(
+        self,
+        videos: List[str],
+        output: str,
+        duration: float = 0.5,
+        transition: str = "fade",
+        transition_choices: Optional[List[str]] = None,
+        audio_delay: float = 0.0,
+        audio_tracks: Optional[List[str]] = None,
+    ) -> str:
+        """Concatenate clips with video xfade and sequential narration audio."""
         if len(videos) < 2:
             shutil.copy(videos[0], output)
             return output
 
         inputs = [ffmpeg.input(video) for video in videos]
         durations = [self._get_video_duration(video) for video in videos]
+        fps_values = [self._get_video_fps(video) for video in videos]
+        target_fps = max(24, round(max(fps_values) if fps_values else 30))
         fade_duration = max(0.1, min(duration, min(durations) / 3))
-        video_stream = inputs[0].video
-        audio_stream = inputs[0].audio
+
+        def normalize_video(stream):
+            return (
+                stream
+                .filter("fps", fps=target_fps)
+                .filter("settb", "AVTB")
+                .filter("setpts", "PTS-STARTPTS")
+            )
+
+        video_stream = normalize_video(inputs[0].video)
         offset = durations[0] - fade_duration
+        transition_sequence = self._build_transition_sequence(
+            videos=videos,
+            transition=transition,
+            transition_choices=transition_choices,
+        )
 
         for index in range(1, len(inputs)):
             video_stream = ffmpeg.filter(
-                [video_stream, inputs[index].video],
+                [video_stream, normalize_video(inputs[index].video)],
                 "xfade",
-                transition="fade",
+                transition=transition_sequence[index - 1],
                 duration=fade_duration,
                 offset=max(0, offset),
             )
-            audio_stream = ffmpeg.filter(
-                [audio_stream, inputs[index].audio],
-                "acrossfade",
-                d=fade_duration,
-            )
             offset += durations[index] - fade_duration
 
+        pause_duration = max(0.0, float(audio_delay or 0.0))
+
+        # Keep audio sequential to avoid narration overlap. Extend the visual
+        # tail to compensate for xfade's overlap plus the intentional pause
+        # before the next narration starts.
+        boundary_count = max(len(inputs) - 1, 0)
+        tail_padding = (fade_duration + pause_duration) * boundary_count
+        if tail_padding > 0:
+            video_stream = video_stream.filter("tpad", stop_mode="clone", stop_duration=tail_padding)
+
         try:
-            (
-                ffmpeg.output(
-                    video_stream,
-                    audio_stream,
-                    output,
-                    vcodec="libx264",
-                    acodec="aac",
-                    pix_fmt="yuv420p",
+            with tempfile.TemporaryDirectory(prefix="mvs_xfade_") as temp_dir:
+                temp_dir_path = Path(temp_dir)
+                video_only_path = temp_dir_path / "xfade_video.mp4"
+                audio_track_path = temp_dir_path / "sequential_audio.wav"
+
+                (
+                    ffmpeg.output(
+                        video_stream,
+                        str(video_only_path),
+                        vcodec="libx264",
+                        pix_fmt="yuv420p",
+                    )
+                    .overwrite_output()
+                    .run(capture_stdout=True, capture_stderr=True)
                 )
-                .overwrite_output()
-                .run(capture_stdout=True, capture_stderr=True)
-            )
+
+                self._build_sequential_audio_track(
+                    videos=videos,
+                    output=str(audio_track_path),
+                    pause_duration=pause_duration,
+                    temp_dir=temp_dir_path,
+                    audio_tracks=audio_tracks,
+                )
+                self.merge_audio_video(
+                    str(video_only_path),
+                    str(audio_track_path),
+                    output,
+                    replace_audio=True,
+                    auto_adjust_duration=True,
+                    duration_tolerance=0.05,
+                )
             return output
         except ffmpeg.Error as exc:
             error_msg = exc.stderr.decode() if exc.stderr else str(exc)
             raise RuntimeError(f"Failed to concatenate videos with fade transition: {error_msg}")
+        except Exception as exc:
+            raise RuntimeError(f"Failed to concatenate videos with fade transition: {exc}") from exc
+
+    def _build_sequential_audio_track(
+        self,
+        videos: List[str],
+        output: str,
+        pause_duration: float,
+        temp_dir: Path,
+        audio_tracks: Optional[List[str]] = None,
+    ) -> str:
+        audio_files: List[Path] = []
+
+        for index, video in enumerate(videos):
+            audio_path = temp_dir / f"audio_{index:02d}.wav"
+            preferred_audio = audio_tracks[index] if audio_tracks and index < len(audio_tracks) else None
+            if preferred_audio:
+                self._normalize_audio_file(audio=preferred_audio, output=str(audio_path))
+            else:
+                self._extract_or_synthesize_audio(video=video, output=str(audio_path))
+            audio_files.append(audio_path)
+
+            if index < len(videos) - 1 and pause_duration > 0:
+                silence_path = temp_dir / f"silence_{index:02d}.wav"
+                self._generate_silence_audio(str(silence_path), pause_duration)
+                audio_files.append(silence_path)
+
+        return self._concat_audio_files(audio_files, output)
+
+    def _normalize_audio_file(self, audio: str, output: str) -> str:
+        (
+            ffmpeg.output(
+                ffmpeg.input(audio).audio.filter("aresample", 48000),
+                output,
+                acodec="pcm_s16le",
+                ac=1,
+                ar=48000,
+            )
+            .overwrite_output()
+            .run(capture_stdout=True, capture_stderr=True)
+        )
+        return output
+
+    def _extract_or_synthesize_audio(self, video: str, output: str) -> str:
+        if not self.has_audio_stream(video):
+            self._generate_silence_audio(output, self._get_video_duration(video))
+            return output
+
+        (
+            ffmpeg.output(
+                ffmpeg.input(video).audio.filter("aresample", 48000),
+                output,
+                acodec="pcm_s16le",
+                ac=1,
+                ar=48000,
+            )
+            .overwrite_output()
+            .run(capture_stdout=True, capture_stderr=True)
+        )
+        return output
+
+    def _generate_silence_audio(self, output: str, duration: float) -> str:
+        (
+            ffmpeg.output(
+                ffmpeg.input(
+                    f"anullsrc=r=48000:cl=mono",
+                    f="lavfi",
+                    t=max(duration, 0.0),
+                ).audio,
+                output,
+                acodec="pcm_s16le",
+                ac=1,
+                ar=48000,
+            )
+            .overwrite_output()
+            .run(capture_stdout=True, capture_stderr=True)
+        )
+        return output
+
+    def _concat_audio_files(self, audio_files: List[Path], output: str) -> str:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            delete=False,
+            suffix=".txt",
+            encoding="utf-8",
+        ) as file_list:
+            for audio_file in audio_files:
+                abs_path = audio_file.absolute()
+                escaped_path = str(abs_path).replace("'", "'\\''")
+                file_list.write(f"file '{escaped_path}'\n")
+            file_list_path = file_list.name
+
+        try:
+            (
+                ffmpeg
+                .input(file_list_path, format="concat", safe=0)
+                .output(output, c="copy")
+                .overwrite_output()
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+            return output
+        finally:
+            if os.path.exists(file_list_path):
+                os.unlink(file_list_path)
+
+    def _should_use_xfade(self, transition: str, transition_choices: Optional[List[str]] = None) -> bool:
+        if transition in XFADES:
+            return True
+        if transition in {"random", "sequence"}:
+            return bool([item for item in (transition_choices or []) if item in XFADES])
+        return False
+
+    def _build_transition_sequence(
+        self,
+        videos: List[str],
+        transition: str,
+        transition_choices: Optional[List[str]] = None,
+    ) -> List[str]:
+        """
+        Resolve one transition per boundary between clips.
+        """
+        count = max(len(videos) - 1, 0)
+        choices = [item for item in (transition_choices or []) if item in XFADES]
+        if transition in XFADES:
+            return [transition] * count
+        if not choices:
+            return ["fade"] * count
+        if transition == "sequence":
+            return [choices[idx % len(choices)] for idx in range(count)]
+        if transition == "random":
+            seed_source = "|".join(videos + choices)
+            seed = int(hashlib.md5(seed_source.encode("utf-8")).hexdigest()[:8], 16)
+            rng = random.Random(seed)
+            return [rng.choice(choices) for _ in range(count)]
+        return ["fade"] * count
+
+    def _get_video_fps(self, video: str) -> float:
+        """Get video FPS from probe data, falling back to 30."""
+        try:
+            probe = ffmpeg.probe(video)
+            video_info = next(s for s in probe["streams"] if s["codec_type"] == "video")
+            fps_str = video_info.get("avg_frame_rate") or video_info.get("r_frame_rate") or "30/1"
+            fps_num, fps_den = map(int, fps_str.split("/"))
+            if fps_den == 0:
+                return 30.0
+            fps = fps_num / fps_den
+            return fps if fps > 0 else 30.0
+        except Exception as e:
+            logger.warning(f"Failed to get video fps for {video}: {e}, using 30fps fallback")
+            return 30.0
     
     def _concat_demuxer(self, videos: List[str], output: str) -> str:
         """
@@ -571,7 +834,10 @@ class VideoService:
         video: str,
         overlay_image: str,
         output: str,
-        scale_mode: str = "contain"
+        scale_mode: str = "contain",
+        motion_mode: str = "none",
+        motion_choices: Optional[List[str]] = None,
+        motion_seed: int = 0,
     ) -> str:
         """
         Overlay a transparent image on top of video
@@ -584,6 +850,9 @@ class VideoService:
                 - "contain": Scale video to fit within overlay dimensions (letterbox/pillarbox)
                 - "cover": Scale video to cover overlay dimensions (may crop)
                 - "stretch": Stretch video to exact overlay dimensions
+            motion_mode: Motion preset to apply to video-backed segments before overlay
+            motion_choices: Candidate motion presets when using random/sequence modes
+            motion_seed: Stable per-segment seed for deterministic motion choice
         
         Returns:
             Path to the output video file
@@ -632,8 +901,18 @@ class VideoService:
                 # Stretch to exact dimensions
                 scaled_video = input_video.filter('scale', overlay_width, overlay_height)
             
+            motion_video = self._apply_video_motion(
+                scaled_video,
+                overlay_width,
+                overlay_height,
+                source_id=video,
+                motion_mode=motion_mode,
+                motion_choices=motion_choices,
+                motion_seed=motion_seed,
+            )
+
             # Overlay the transparent image on top of the scaled video
-            output_stream = ffmpeg.overlay(scaled_video, input_overlay)
+            output_stream = ffmpeg.overlay(motion_video, input_overlay)
             
             (
                 ffmpeg
@@ -652,6 +931,118 @@ class VideoService:
             error_msg = e.stderr.decode() if e.stderr else str(e)
             logger.error(f"FFmpeg overlay error: {error_msg}")
             raise RuntimeError(f"Failed to overlay image on video: {error_msg}")
+
+    def _apply_video_motion(
+        self,
+        stream,
+        width: int,
+        height: int,
+        source_id: str,
+        motion_mode: str = "none",
+        motion_choices: Optional[List[str]] = None,
+        motion_seed: int = 0,
+    ):
+        """Apply a subtle camera move to video clips so effect settings also affect video media."""
+        preset = self._pick_video_motion_preset(
+            source_id,
+            motion_mode=motion_mode,
+            motion_choices=motion_choices,
+            motion_seed=motion_seed,
+        )
+        if preset["scale"] <= 1.0:
+            return stream
+
+        scaled_width = max(2, int(width * preset["scale"]) // 2 * 2)
+        scaled_height = max(2, int(height * preset["scale"]) // 2 * 2)
+
+        return (
+            stream
+            .filter("scale", scaled_width, scaled_height)
+            .filter(
+                "crop",
+                width,
+                height,
+                preset["x_expr"],
+                preset["y_expr"],
+            )
+        )
+
+    def _pick_video_motion_preset(
+        self,
+        source_id: str,
+        motion_mode: str = "none",
+        motion_choices: Optional[List[str]] = None,
+        motion_seed: int = 0,
+    ) -> dict:
+        """Resolve video motion presets using the same mode names as image motion."""
+        valid_modes = {"none", "gentle", "float", "cinematic"}
+        filtered_choices = [item for item in (motion_choices or []) if item in valid_modes and item != "none"]
+        if motion_mode == "random" and filtered_choices:
+            seed_source = f"{source_id}|video|{motion_seed}|{'|'.join(filtered_choices)}"
+            seed = int(hashlib.md5(seed_source.encode("utf-8")).hexdigest()[:8], 16)
+            motion_mode = filtered_choices[seed % len(filtered_choices)]
+        elif motion_mode == "sequence" and filtered_choices:
+            motion_mode = filtered_choices[motion_seed % len(filtered_choices)]
+        elif motion_mode not in valid_modes:
+            motion_mode = "float"
+
+        if motion_mode == "none":
+            return {
+                "name": "static",
+                "scale": 1.0,
+                "x_expr": "(in_w-out_w)/2",
+                "y_expr": "(in_h-out_h)/2",
+            }
+
+        range_x = "(in_w-out_w)"
+        range_y = "(in_h-out_h)"
+        presets_by_mode = {
+            "gentle": [
+                {
+                    "name": "gentle-drift",
+                    "scale": 1.05,
+                    "x_expr": f"({range_x})/2 + ({range_x})*0.10*sin(t/3.4)",
+                    "y_expr": f"({range_y})/2 + ({range_y})*0.08*cos(t/3.9)",
+                },
+                {
+                    "name": "gentle-rise",
+                    "scale": 1.06,
+                    "x_expr": f"({range_x})/2 + ({range_x})*0.08*cos(t/3.2)",
+                    "y_expr": f"({range_y})/2 + ({range_y})*0.12*sin(t/4.1)",
+                },
+            ],
+            "float": [
+                {
+                    "name": "float-wide",
+                    "scale": 1.10,
+                    "x_expr": f"({range_x})/2 + ({range_x})*0.18*sin(t/2.8)",
+                    "y_expr": f"({range_y})/2 + ({range_y})*0.12*cos(t/3.3)",
+                },
+                {
+                    "name": "float-diagonal",
+                    "scale": 1.11,
+                    "x_expr": f"({range_x})/2 + ({range_x})*0.16*cos(t/2.5)",
+                    "y_expr": f"({range_y})/2 + ({range_y})*0.14*sin(t/3.0)",
+                },
+            ],
+            "cinematic": [
+                {
+                    "name": "cinematic-push",
+                    "scale": 1.14,
+                    "x_expr": f"({range_x})/2 + ({range_x})*0.22*sin(t/2.4)",
+                    "y_expr": f"({range_y})/2 + ({range_y})*0.16*cos(t/2.9)",
+                },
+                {
+                    "name": "cinematic-sweep",
+                    "scale": 1.16,
+                    "x_expr": f"({range_x})/2 + ({range_x})*0.24*cos(t/2.2)",
+                    "y_expr": f"({range_y})/2 + ({range_y})*0.18*sin(t/2.7)",
+                },
+            ],
+        }
+        presets = presets_by_mode.get(motion_mode, presets_by_mode["float"])
+        seed = int(hashlib.md5(f"{source_id}|video-motion".encode("utf-8")).hexdigest()[:8], 16)
+        return presets[(seed + motion_seed) % len(presets)]
     
     def create_video_from_image(
         self,
@@ -659,6 +1050,11 @@ class VideoService:
         audio: str,
         output: str,
         fps: int = 30,
+        motion_mode: str = "float",
+        motion_choices: Optional[List[str]] = None,
+        motion_seed: int = 0,
+        min_duration: float = 0.0,
+        trailing_silence: float = 0.0,
     ) -> str:
         """
         Create video from static image and audio
@@ -694,22 +1090,58 @@ class VideoService:
             # Get audio duration to ensure exact video duration match
             probe = ffmpeg.probe(audio)
             audio_duration = float(probe['format']['duration'])
-            logger.debug(f"Audio duration: {audio_duration:.3f}s")
-            
+            target_duration = max(
+                audio_duration + float(trailing_silence or 0),
+                float(min_duration or 0),
+            )
+            logger.debug(f"Audio duration: {audio_duration:.3f}s, target duration: {target_duration:.3f}s")
+
+            image_width, image_height = self._get_media_dimensions(image)
+            motion_preset = self._pick_image_motion_preset(
+                image,
+                motion_mode,
+                motion_choices=motion_choices,
+                motion_seed=motion_seed,
+            )
+            logger.debug(
+                f"Image motion preset: {motion_preset['name']} (mode={motion_mode}) for {image_width}x{image_height}"
+            )
+
             # Input image with loop (loop=1 means loop indefinitely)
-            # Use framerate to set input framerate
             input_image = ffmpeg.input(image, loop=1, framerate=fps)
             input_audio = ffmpeg.input(audio)
-            
-            # Combine image and audio
-            # Use -t to explicitly set video duration = audio duration
+            audio_stream = input_audio.audio
+            if target_duration > audio_duration:
+                audio_stream = audio_stream.filter("apad", whole_dur=target_duration)
+
+            motion_stream = input_image.video.filter(
+                "zoompan",
+                z=motion_preset["zoom_expr"],
+                x=motion_preset["x_expr"],
+                y=motion_preset["y_expr"],
+                d=1,
+                s=f"{image_width}x{image_height}",
+                fps=fps,
+            )
+
+            # Add a gentle fade at scene edges so image segments feel less abrupt.
+            fade_time = min(0.35, max(audio_duration * 0.12, 0.15))
+            if audio_duration > fade_time * 2:
+                motion_stream = motion_stream.filter("fade", type="in", start_time=0, duration=fade_time)
+                motion_stream = motion_stream.filter(
+                    "fade",
+                    type="out",
+                    start_time=max(target_duration - fade_time, 0),
+                    duration=fade_time,
+                )
+
             (
                 ffmpeg
                 .output(
-                    input_image,
-                    input_audio,
+                    motion_stream,
+                    audio_stream,
                     output,
-                    t=audio_duration,  # Force video duration to match audio exactly
+                    t=target_duration,
                     vcodec='libx264',
                     acodec='aac',
                     pix_fmt='yuv420p',
@@ -722,12 +1154,310 @@ class VideoService:
                 .run(capture_stdout=True, capture_stderr=True)
             )
             
-            logger.success(f"Video created from image: {output} (duration: {audio_duration:.3f}s)")
+            logger.success(f"Video created from image: {output} (duration: {target_duration:.3f}s)")
             return output
         except ffmpeg.Error as e:
             error_msg = e.stderr.decode() if e.stderr else str(e)
             logger.error(f"FFmpeg error creating video from image: {error_msg}")
             raise RuntimeError(f"Failed to create video from image: {error_msg}")
+
+    def create_video_from_images(
+        self,
+        images: List[str],
+        audio: str,
+        output: str,
+        fps: int = 30,
+        motion_mode: str = "float",
+        motion_choices: Optional[List[str]] = None,
+        motion_seed: int = 0,
+        min_duration: float = 0.0,
+        trailing_silence: float = 0.0,
+    ) -> str:
+        """Create one narration segment from multiple still images."""
+        self._ensure_ffmpeg()
+        valid_images = [image for image in images if image]
+        if not valid_images:
+            raise ValueError("Images list cannot be empty")
+        if len(valid_images) == 1:
+            return self.create_video_from_image(
+                image=valid_images[0],
+                audio=audio,
+                output=output,
+                fps=fps,
+                motion_mode=motion_mode,
+                motion_choices=motion_choices,
+                motion_seed=motion_seed,
+                min_duration=min_duration,
+                trailing_silence=trailing_silence,
+            )
+
+        from morpheus_video_studio.utils.content_generators import plan_visual_shots
+
+        audio_duration = self._get_audio_duration(audio)
+        target_duration = max(
+            audio_duration + float(trailing_silence or 0.0),
+            float(min_duration or 0.0),
+        )
+        shot_plan = plan_visual_shots(
+            target_duration,
+            min_shot_seconds=2.4,
+            max_shot_seconds=4.2,
+            max_shots=min(3, len(valid_images)),
+        )
+        selected_images = valid_images[: shot_plan["shot_count"]]
+
+        with tempfile.TemporaryDirectory(prefix="mvs_multishot_") as temp_dir:
+            temp_dir_path = Path(temp_dir)
+            shot_videos: List[str] = []
+            for index, (image, shot_duration) in enumerate(zip(selected_images, shot_plan["shot_durations"])):
+                shot_video_path = temp_dir_path / f"shot_{index + 1:02d}.mp4"
+                self.create_silent_video_from_image(
+                    image=image,
+                    output=str(shot_video_path),
+                    duration=shot_duration,
+                    fps=fps,
+                    motion_mode=motion_mode,
+                    motion_choices=motion_choices,
+                    motion_seed=motion_seed + index,
+                )
+                shot_videos.append(str(shot_video_path))
+
+            stitched_video = temp_dir_path / "stitched.mp4"
+            padded_audio = temp_dir_path / "narration_padded.m4a"
+            internal_transition = min(
+                0.35,
+                max(min(shot_plan["shot_durations"]) * 0.12, 0.18),
+            )
+            self.concat_videos(
+                shot_videos,
+                str(stitched_video),
+                method="filter",
+                transition="sequence" if len(shot_videos) > 1 else "none",
+                transition_choices=["fade", "dissolve", "wipeleft"],
+                transition_duration=internal_transition,
+                transition_audio_delay=0.0,
+            )
+            audio_to_merge = audio
+            if target_duration > audio_duration:
+                (
+                    ffmpeg.output(
+                        ffmpeg.input(audio).audio.filter("apad", whole_dur=target_duration),
+                        str(padded_audio),
+                        t=target_duration,
+                        acodec="aac",
+                        audio_bitrate="192k",
+                    )
+                    .overwrite_output()
+                    .run(capture_stdout=True, capture_stderr=True)
+                )
+                audio_to_merge = str(padded_audio)
+            self.merge_audio_video(
+                video=str(stitched_video),
+                audio=audio_to_merge,
+                output=output,
+                replace_audio=True,
+                auto_adjust_duration=True,
+                duration_tolerance=0.05,
+            )
+        return output
+
+    def extract_video_frame(
+        self,
+        video: str,
+        output_image: str,
+        timestamp: float = 0.2,
+    ) -> str:
+        """Extract one representative frame from a video clip."""
+        self._ensure_ffmpeg()
+        try:
+            (
+                ffmpeg
+                .input(video, ss=max(0.0, float(timestamp)))
+                .output(output_image, vframes=1)
+                .overwrite_output()
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+            return output_image
+        except ffmpeg.Error as e:
+            error_msg = e.stderr.decode() if e.stderr else str(e)
+            logger.error(f"FFmpeg frame extraction error: {error_msg}")
+            raise RuntimeError(f"Failed to extract frame from video: {error_msg}")
+
+    def create_silent_video_from_image(
+        self,
+        image: str,
+        output: str,
+        duration: float,
+        fps: int = 30,
+        motion_mode: str = "float",
+        motion_choices: Optional[List[str]] = None,
+        motion_seed: int = 0,
+    ) -> str:
+        """Create a silent motion shot from a still image."""
+        self._ensure_ffmpeg()
+        try:
+            image_width, image_height = self._get_media_dimensions(image)
+            motion_preset = self._pick_image_motion_preset(
+                image,
+                motion_mode,
+                motion_choices=motion_choices,
+                motion_seed=motion_seed,
+            )
+            input_image = ffmpeg.input(image, loop=1, framerate=fps)
+            motion_stream = input_image.video.filter(
+                "zoompan",
+                z=motion_preset["zoom_expr"],
+                x=motion_preset["x_expr"],
+                y=motion_preset["y_expr"],
+                d=1,
+                s=f"{image_width}x{image_height}",
+                fps=fps,
+            )
+            (
+                ffmpeg
+                .output(
+                    motion_stream,
+                    output,
+                    t=max(float(duration), 0.1),
+                    vcodec="libx264",
+                    pix_fmt="yuv420p",
+                    preset="medium",
+                    crf=23,
+                    **{"b:v": "2M"},
+                )
+                .overwrite_output()
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+            return output
+        except ffmpeg.Error as e:
+            error_msg = e.stderr.decode() if e.stderr else str(e)
+            logger.error(f"FFmpeg silent image video error: {error_msg}")
+            raise RuntimeError(f"Failed to create silent video from image: {error_msg}")
+
+    def _get_media_dimensions(self, media_path: str) -> tuple[int, int]:
+        """Read media dimensions with a safe fallback."""
+        try:
+            probe = ffmpeg.probe(media_path)
+            stream = next(s for s in probe["streams"] if s["codec_type"] == "video")
+            width = int(stream.get("width") or 1080)
+            height = int(stream.get("height") or 1920)
+            return width, height
+        except Exception as exc:
+            logger.warning(f"Failed to read media dimensions for {media_path}: {exc}")
+            return 1080, 1920
+
+    def _pick_image_motion_preset(
+        self,
+        image_path: str,
+        motion_mode: str = "float",
+        motion_choices: Optional[List[str]] = None,
+        motion_seed: int = 0,
+    ) -> dict:
+        """
+        Deterministically vary Ken Burns motion so image segments feel alive.
+        """
+        valid_modes = {"none", "gentle", "float", "cinematic"}
+        filtered_choices = [item for item in (motion_choices or []) if item in valid_modes and item != "none"]
+        if motion_mode == "random" and filtered_choices:
+            seed_source = f"{image_path}|{motion_seed}|{'|'.join(filtered_choices)}"
+            seed = int(hashlib.md5(seed_source.encode("utf-8")).hexdigest()[:8], 16)
+            motion_mode = filtered_choices[seed % len(filtered_choices)]
+        elif motion_mode == "sequence" and filtered_choices:
+            motion_mode = filtered_choices[motion_seed % len(filtered_choices)]
+        elif motion_mode not in valid_modes:
+            motion_mode = "float"
+
+        if motion_mode == "none":
+            return {
+                "name": "static",
+                "zoom_expr": "1",
+                "x_expr": "iw/2-(iw/zoom/2)",
+                "y_expr": "ih/2-(ih/zoom/2)",
+            }
+
+        seed = int(hashlib.md5(image_path.encode("utf-8")).hexdigest()[:8], 16)
+        if motion_mode == "gentle":
+            presets = [
+                {
+                    "name": "gentle-zoom-in",
+                    "zoom_expr": "min(zoom+0.0012,1.16)",
+                    "x_expr": "iw/2-(iw/zoom/2)",
+                    "y_expr": "ih/2-(ih/zoom/2)",
+                },
+                {
+                    "name": "gentle-drift-right",
+                    "zoom_expr": "min(zoom+0.0011,1.14)",
+                    "x_expr": "iw/2-(iw/zoom/2)+(iw-iw/zoom)*0.12*sin(on/42)",
+                    "y_expr": "ih/2-(ih/zoom/2)+(ih-ih/zoom)*0.05*cos(on/54)",
+                },
+                {
+                    "name": "gentle-drift-up",
+                    "zoom_expr": "min(zoom+0.0011,1.14)",
+                    "x_expr": "iw/2-(iw/zoom/2)+(iw-iw/zoom)*0.05*sin(on/50)",
+                    "y_expr": "ih/2-(ih/zoom/2)+(ih-ih/zoom)*0.12*cos(on/40)",
+                },
+                {
+                    "name": "gentle-zoom-out",
+                    "zoom_expr": "if(eq(on,1),1.16,max(zoom-0.0010,1.03))",
+                    "x_expr": "iw/2-(iw/zoom/2)",
+                    "y_expr": "ih/2-(ih/zoom/2)",
+                },
+            ]
+        elif motion_mode == "cinematic":
+            presets = [
+                {
+                    "name": "cinematic-zoom-in",
+                    "zoom_expr": "min(zoom+0.0018,1.28)",
+                    "x_expr": "iw/2-(iw/zoom/2)",
+                    "y_expr": "ih/2-(ih/zoom/2)",
+                },
+                {
+                    "name": "cinematic-drift-right",
+                    "zoom_expr": "min(zoom+0.0016,1.24)",
+                    "x_expr": "iw/2-(iw/zoom/2)+(iw-iw/zoom)*0.22*sin(on/32)",
+                    "y_expr": "ih/2-(ih/zoom/2)+(ih-ih/zoom)*0.08*cos(on/44)",
+                },
+                {
+                    "name": "cinematic-drift-up",
+                    "zoom_expr": "min(zoom+0.0016,1.24)",
+                    "x_expr": "iw/2-(iw/zoom/2)+(iw-iw/zoom)*0.08*sin(on/46)",
+                    "y_expr": "ih/2-(ih/zoom/2)+(ih-ih/zoom)*0.22*cos(on/30)",
+                },
+                {
+                    "name": "cinematic-zoom-out",
+                    "zoom_expr": "if(eq(on,1),1.26,max(zoom-0.0014,1.04))",
+                    "x_expr": "iw/2-(iw/zoom/2)",
+                    "y_expr": "ih/2-(ih/zoom/2)",
+                },
+            ]
+        else:
+            presets = [
+                {
+                    "name": "float-zoom-in",
+                    "zoom_expr": "min(zoom+0.0014,1.20)",
+                    "x_expr": "iw/2-(iw/zoom/2)",
+                    "y_expr": "ih/2-(ih/zoom/2)",
+                },
+                {
+                    "name": "float-drift-right",
+                    "zoom_expr": "min(zoom+0.0013,1.19)",
+                    "x_expr": "iw/2-(iw/zoom/2)+(iw-iw/zoom)*0.18*sin(on/34)",
+                    "y_expr": "ih/2-(ih/zoom/2)+(ih-ih/zoom)*0.07*cos(on/46)",
+                },
+                {
+                    "name": "float-drift-up",
+                    "zoom_expr": "min(zoom+0.0013,1.19)",
+                    "x_expr": "iw/2-(iw/zoom/2)+(iw-iw/zoom)*0.07*sin(on/44)",
+                    "y_expr": "ih/2-(ih/zoom/2)+(ih-ih/zoom)*0.18*cos(on/34)",
+                },
+                {
+                    "name": "float-zoom-out",
+                    "zoom_expr": "if(eq(on,1),1.20,max(zoom-0.0012,1.04))",
+                    "x_expr": "iw/2-(iw/zoom/2)",
+                    "y_expr": "ih/2-(ih/zoom/2)",
+                },
+            ]
+        return presets[seed % len(presets)]
     
     def add_bgm(
         self,

@@ -396,9 +396,7 @@ A: **This project fully supports free operation!**
 
 Morpheus Video Studio design is inspired by the following excellent open-source projects:
 
-- [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) - Excellent video generation tool
 - [NarratoAI](https://github.com/linyqh/NarratoAI) - Film commentary automation tool
-- [MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus) - Video creation platform
 - [ComfyKit](https://github.com/puke3615/ComfyKit) - ComfyUI workflow wrapper library
 
 Thanks for the open-source spirit of these projects! 🙏

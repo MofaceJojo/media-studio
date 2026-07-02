@@ -38,6 +38,8 @@ class StoryboardConfig:
     
     # Video parameters (fps only, size is determined by frame template)
     video_fps: int = 30                        # Frame rate
+    min_segment_duration: float = 0.0         # Extra minimum hold per segment; 0 = follow audio length exactly
+    scene_trailing_silence: float = 0.0       # Extra silence padded after narration; 0 = follow audio length exactly
     
     # Audio parameters
     tts_inference_mode: str = "local"          # TTS inference mode: "local", "omnivoice", or "comfyui"
@@ -54,8 +56,10 @@ class StoryboardConfig:
     frame_template: str = "1080x1920/default.html"  # Template path with size (e.g., "1080x1920/default.html")
     template_params: Optional[Dict[str, Any]] = None  # Custom template parameters (e.g., {"accent_color": "#ff0000"})
 
-    # MoneyPrinterTurbo-style stock material and subtitle controls
+    # Stock material and subtitle controls
     stock_selection_mode: str = "sequential"
+    image_motion_mode: str = "float"
+    image_motion_choices: List[str] = field(default_factory=lambda: ["float"])
     subtitle_customization_enabled: bool = False
     subtitle_enabled: bool = True
     subtitle_font: str = "Microsoft YaHei"
@@ -80,6 +84,10 @@ class StoryboardFrame:
     video_path: Optional[str] = None           # Original video path (for video type, before composition)
     composed_image_path: Optional[str] = None  # Composed image path (with subtitles, for image type)
     video_segment_path: Optional[str] = None   # Final video segment path
+    shot_count: int = 1                        # Number of visual shots planned for this narration
+    shot_prompts: List[str] = field(default_factory=list)
+    shot_image_paths: List[str] = field(default_factory=list)
+    shot_composed_image_paths: List[str] = field(default_factory=list)
     
     # Metadata
     duration: float = 0.0                      # Frame duration (seconds, from audio or video)

@@ -25,6 +25,12 @@ from web.components.style_preset_picker import (
     get_default_image_style_preset,
     render_image_style_preset_picker,
 )
+from web.components.tts_preferences import (
+    get_local_tts_preferences,
+    get_omnivoice_tts_preferences,
+    persist_local_tts_preferences,
+    persist_omnivoice_tts_preferences,
+)
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import check_and_warn_selfhost_workflow
 from morpheus_video_studio.config import config_manager
@@ -34,6 +40,22 @@ from morpheus_video_studio.utils.omnivoice_util import (
     normalize_omnivoice_instruct,
 )
 from morpheus_video_studio.utils.comfyui_util import check_comfyui_health
+
+
+def _get_hyperframe_config() -> dict:
+    """Read HyperFrame config with compatibility for already-running Streamlit sessions."""
+    if hasattr(config_manager, "get_hyperframe_config"):
+        return config_manager.get_hyperframe_config()
+
+    config_dict = config_manager.config.to_dict() if hasattr(config_manager.config, "to_dict") else {}
+    return {
+        "enabled": True,
+        "command": "npx --yes hyperframes",
+        "quality": "draft",
+        "fps": 30,
+        "timeout_seconds": 300,
+        **config_dict.get("hyperframe", {}),
+    }
 
 
 def render_style_config(morpheus_video_studio, tts_container=None):
@@ -83,8 +105,10 @@ def render_style_config(morpheus_video_studio, tts_container=None):
             
             # Get saved voice from config
             local_config = tts_config.get("local", {})
-            saved_voice = local_config.get("voice", "zh-CN-YunjianNeural")
-            saved_speed = local_config.get("speed", 1.2)
+            saved_voice, saved_speed = get_local_tts_preferences(
+                local_config.get("voice", "zh-CN-YunjianNeural"),
+                float(local_config.get("speed", 1.2)),
+            )
             
             # Build voice options with i18n
             voice_options = []
@@ -129,6 +153,8 @@ def render_style_config(morpheus_video_studio, tts_container=None):
                     key="tts_local_speed"
                 )
                 st.caption(tr("tts.speed_label", speed=f"{tts_speed:.1f}"))
+
+            persist_local_tts_preferences(selected_voice, tts_speed)
             
             # Variables for video generation
             tts_workflow_key = None
@@ -140,11 +166,12 @@ def render_style_config(morpheus_video_studio, tts_container=None):
         elif tts_mode == "omnivoice":
             omni_config = tts_config.get("omnivoice", {})
             omni_base_url = omni_config.get("base_url", "http://127.0.0.1:3900").rstrip("/")
-            saved_voice = omni_config.get("voice", "default")
-            saved_speed = omni_config.get("speed", 1.0)
-            saved_instruct = normalize_omnivoice_instruct(
-                omni_config.get("instruct")
-            ) or "男，青年"
+            saved_voice, saved_speed, _, saved_instruct = get_omnivoice_tts_preferences(
+                omni_config.get("voice", "default"),
+                float(omni_config.get("speed", 1.0)),
+                omni_config.get("model", "omnivoice"),
+                normalize_omnivoice_instruct(omni_config.get("instruct")) or "男，青年",
+            )
 
             omni_ok, omni_status = check_omnivoice_health(omni_base_url)
             if omni_ok:
@@ -211,6 +238,11 @@ def render_style_config(morpheus_video_studio, tts_container=None):
                 help="仅支持预设标签，例如：男，青年 / female, young adult。勿写长段英文或「深情」等自由描述。",
             )
             omnivoice_instruct = normalize_omnivoice_instruct(omnivoice_instruct) or "男，青年"
+            persist_omnivoice_tts_preferences(
+                selected_voice,
+                tts_speed,
+                instruct=omnivoice_instruct,
+            )
             tts_workflow_key = None
             ref_audio_path = None
         
@@ -808,15 +840,19 @@ def render_style_config(morpheus_video_studio, tts_container=None):
                 "stock_turbo": "Turbo 极速素材",
                 "comfy_first": "Comfy 优先",
             }
+            if template_media_type == "video":
+                media_strategy_options["hyperframe"] = "HyperFrame 视频"
             media_strategy = st.radio(
                 "媒体生成策略",
                 options=list(media_strategy_options.keys()),
                 format_func=lambda key: media_strategy_options[key],
-                index=0,
+                index=2,
                 horizontal=False,
                 help=(
-                    "推荐使用素材优先：先用 Pexels + Pixabay，素材失败时再由 ComfyUI 辅助。"
+                    "默认推荐使用 ComfyUI：主题一致性和画面控制更稳定。"
+                    "素材优先适合通用可拍题材，但不适合明确作品 IP。"
                     "Turbo 会跳过视觉提示词生成，速度最快但匹配会更泛化。"
+                    "HyperFrame 会用本地 HyperFrames 渲染视频片段。"
                 ),
                 key="media_generation_strategy"
             )
@@ -915,9 +951,30 @@ def render_style_config(morpheus_video_studio, tts_container=None):
                     st.caption(f"素材源：全部（{', '.join(enabled_stock_sources)}）")
                 else:
                     st.warning("已选择素材策略，但还没有配置 Pexels 或 Pixabay API Key。")
+            elif media_strategy == "hyperframe":
+                workflow_key = "hyperframe/render"
+                hyperframe_config = _get_hyperframe_config()
+                if not hyperframe_config.get("enabled", True):
+                    st.warning("HyperFrame 当前未启用，请先在系统设置里启用。")
+                else:
+                    from morpheus_video_studio.utils.hyperframe_util import check_hyperframe_health
+
+                    health_timeout = min(
+                        max(float(hyperframe_config.get("timeout_seconds", 300)), 10.0),
+                        30.0,
+                    )
+                    hf_ok, hf_msg = check_hyperframe_health(
+                        hyperframe_config.get("command", "npx --yes hyperframes"),
+                        timeout=health_timeout,
+                    )
+                    if hf_ok:
+                        st.caption(hf_msg)
+                    else:
+                        st.warning(f"{hf_msg} 生成失败时会自动改用全部素材源（Pexels + Pixabay）。")
             
             # Check and warn for selfhost media workflow (auto popup if not confirmed)
-            check_and_warn_selfhost_workflow(workflow_key)
+            if workflow_key.startswith("selfhost/"):
+                check_and_warn_selfhost_workflow(workflow_key)
 
             if media_strategy == "comfy_first" and workflow_key.endswith("video_dreamshaper_m4_fast.json"):
                 st.warning(

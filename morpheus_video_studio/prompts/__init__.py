@@ -28,6 +28,7 @@ from morpheus_video_studio.prompts.image_generation import (
     DEFAULT_IMAGE_STYLE
 )
 from morpheus_video_studio.prompts.style_conversion import build_style_conversion_prompt
+from morpheus_video_studio.prompts.seedance_script import build_seedance_script_prompt
 
 
 __all__ = [
@@ -39,6 +40,7 @@ __all__ = [
     # Image builders
     "build_image_prompt_prompt",
     "build_style_conversion_prompt",
+    "build_seedance_script_prompt",
     
     # Image style presets
     "IMAGE_STYLE_PRESETS",

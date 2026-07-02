@@ -25,6 +25,10 @@ import streamlit as st
 from loguru import logger
 
 from web.i18n import tr, get_language
+from web.components.tts_preferences import (
+    get_local_tts_preferences,
+    persist_local_tts_preferences,
+)
 from web.pipelines.base import PipelineUI, register_pipeline_ui
 from web.components.content_input import render_bgm_section
 from web.utils.async_helpers import run_async
@@ -91,6 +95,15 @@ class AssetBasedPipelineUI(PipelineUI):
                 st.markdown(f"**{tr('help.how')}**")
                 st.markdown(tr("asset_based.assets.how"))
             
+            preloaded_assets = st.session_state.get("studio_selected_asset_paths") or []
+            valid_preloaded_assets = [
+                str(Path(path).resolve())
+                for path in preloaded_assets
+                if path and Path(path).exists()
+            ]
+            if valid_preloaded_assets:
+                st.info(f"已从资产库带入 {len(valid_preloaded_assets)} 个素材，可直接生成或继续补充上传。")
+
             # File uploader for multiple files
             uploaded_files = st.file_uploader(
                 tr("asset_based.assets.upload"),
@@ -101,7 +114,7 @@ class AssetBasedPipelineUI(PipelineUI):
             )
             
             # Save uploaded files to temp directory with unique session ID
-            asset_paths = []
+            asset_paths = list(valid_preloaded_assets)
             if uploaded_files:
                 import uuid
                 session_id = str(uuid.uuid4()).replace('-', '')[:12]
@@ -113,22 +126,29 @@ class AssetBasedPipelineUI(PipelineUI):
                     with open(file_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
                     asset_paths.append(str(file_path.absolute()))
-                
+
+            if asset_paths:
                 st.success(tr("asset_based.assets.count", count=len(asset_paths)))
-                
-                # Preview uploaded assets
+
                 with st.expander(tr("asset_based.assets.preview"), expanded=True):
-                    # Show in a grid (3 columns)
                     cols = st.columns(3)
-                    for i, (file, path) in enumerate(zip(uploaded_files, asset_paths)):
+
+                    preview_items: list[tuple[str, str, str]] = []
+                    for path in valid_preloaded_assets:
+                        preview_items.append((Path(path).name, path, "preloaded"))
+                    for path in asset_paths:
+                        if path not in valid_preloaded_assets:
+                            preview_items.append((Path(path).name, path, "uploaded"))
+
+                    for i, (label, path, source_kind) in enumerate(preview_items):
                         with cols[i % 3]:
-                            # Check if image or video
                             ext = Path(path).suffix.lower()
+                            caption = f"{label} · 资产库" if source_kind == "preloaded" else label
                             if ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
-                                st.image(file, caption=file.name, use_container_width=True)
+                                st.image(path, caption=caption, use_container_width=True)
                             elif ext in [".mp4", ".mov", ".avi", ".mkv", ".webm"]:
-                                st.video(file)
-                                st.caption(file.name)
+                                st.video(path)
+                                st.caption(caption)
             else:
                 st.info(tr("asset_based.assets.empty_hint"))
         
@@ -219,8 +239,10 @@ class AssetBasedPipelineUI(PipelineUI):
             comfyui_config = config_manager.get_comfyui_config()
             tts_config = comfyui_config.get("tts", {})
             local_config = tts_config.get("local", {})
-            saved_voice = local_config.get("voice", "zh-CN-YunjianNeural")
-            saved_speed = local_config.get("speed", 1.2)
+            saved_voice, saved_speed = get_local_tts_preferences(
+                local_config.get("voice", "zh-CN-YunjianNeural"),
+                float(local_config.get("speed", 1.2)),
+            )
             
             # Build voice options with i18n
             voice_options = []
@@ -260,6 +282,8 @@ class AssetBasedPipelineUI(PipelineUI):
                     key="asset_tts_speed"
                 )
                 st.caption(tr("tts.speed_label", speed=f"{tts_speed:.1f}"))
+
+            persist_local_tts_preferences(voice_id, tts_speed)
         
         return {
             "duration": duration,

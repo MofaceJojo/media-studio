@@ -4,7 +4,7 @@ from typing import Any
 
 import streamlit as st
 
-from morpheus_video_studio.services.moneyprinter_tools import merge_media
+from morpheus_video_studio.services.stock_publish_tools import merge_media
 from web.pipelines.base import PipelineUI, register_pipeline_ui
 from web.pipelines.video_mix import _size_from_layout
 

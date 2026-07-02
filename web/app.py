@@ -30,7 +30,7 @@ import streamlit as st
 
 # Setup page config (must be first Streamlit command)
 st.set_page_config(
-    page_title="Morpheus Video Studio - AI Video Generator",
+    page_title="Media Studio",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -40,21 +40,59 @@ st.set_page_config(
 def main():
     """Main entry point with navigation"""
     # Define pages using st.Page
-    home_page = st.Page(
-        "pages/1_🎬_Home.py",
-        title="Home",
-        icon="🎬",
+    studio_page = st.Page(
+        "pages/1_🏠_Studio.py",
+        title="Studio",
+        icon="🏠",
         default=True
     )
-    
+
+    content_page = st.Page(
+        "pages/2_📚_Content_Library.py",
+        title="Content Library",
+        icon="📚",
+    )
+
+    audio_page = st.Page(
+        "pages/3_🎙️_Audio_Workshop.py",
+        title="Audio Workshop",
+        icon="🎙️",
+    )
+
+    video_page = st.Page(
+        "pages/4_🎬_Video_Workshop.py",
+        title="Video Workshop",
+        icon="🎬",
+    )
+
+    digital_human_page = st.Page(
+        "pages/5_🤖_Digital_Human.py",
+        title="Digital Human",
+        icon="🤖",
+    )
+
+    asset_library_page = st.Page(
+        "pages/6_🗂️_Asset_Library.py",
+        title="Asset Library",
+        icon="🗂️",
+    )
+
+    settings_page = st.Page(
+        "pages/7_⚙️_Settings.py",
+        title="Settings",
+        icon="⚙️",
+    )
+
     history_page = st.Page(
         "pages/2_📚_History.py",
         title="History",
-        icon="📚"
+        icon="🕘",
     )
-    
+
     # Set up navigation and run
-    pg = st.navigation([home_page, history_page])
+    pg = st.navigation(
+        [studio_page, content_page, audio_page, video_page, digital_human_page, asset_library_page, settings_page, history_page]
+    )
     pg.run()
 
 

@@ -65,6 +65,7 @@ def render_single_output(morpheus_video_studio, video_params):
     workflow_key = video_params.get("media_workflow")
     media_strategy = video_params.get("media_strategy")
     prompt_prefix = video_params.get("prompt_prefix", "")
+    ai_script_draft = (video_params.get("ai_script_draft") or "").strip()
 
     if not text and "quick_create_text_input" in st.session_state:
         text = st.session_state.get("quick_create_text_input", "")
@@ -79,6 +80,8 @@ def render_single_output(morpheus_video_studio, video_params):
             st.warning(tr("settings.not_configured"))
         
         # Generate Button
+        if ai_script_draft and mode in ("generate", "document"):
+            st.caption("将优先使用上面编辑过的 AI 文案草稿生成视频。若要重新自动写文案，请先清空草稿。")
         if st.button(tr("btn.generate"), type="primary", use_container_width=True):
             # Validate system configuration
             if not config_manager.validate():
@@ -104,6 +107,10 @@ def render_single_output(morpheus_video_studio, video_params):
                 if not comfy_ok:
                     st.warning(f"{comfy_msg} 将自动改用全部素材源（Pexels + Pixabay）。")
                     workflow_key = "stock/all"
+
+            effective_text = ai_script_draft if ai_script_draft and mode in ("generate", "document") else text
+            effective_mode = "fixed" if ai_script_draft and mode in ("generate", "document") else mode
+            effective_split_mode = "line" if effective_mode == "fixed" and ai_script_draft else split_mode
             
             # Show progress
             progress_bar = st.progress(0)
@@ -150,11 +157,11 @@ def render_single_output(morpheus_video_studio, video_params):
                 # Generate video (directly pass parameters)
                 # Note: media_width and media_height are auto-determined from template
                 gen_params = {
-                    "text": text,
-                    "mode": mode,
+                    "text": effective_text,
+                    "mode": effective_mode,
                     "title": title if title else None,
                     "n_scenes": n_scenes,
-                    "split_mode": split_mode,
+                    "split_mode": effective_split_mode,
                     "media_workflow": workflow_key,
                     "media_strategy": media_strategy,
                     "frame_template": frame_template,
@@ -169,7 +176,12 @@ def render_single_output(morpheus_video_studio, video_params):
                 for key in (
                     "stock_selection_mode",
                     "transition_mode",
+                    "transition_choices",
                     "transition_duration",
+                    "min_segment_duration",
+                    "scene_trailing_silence",
+                    "image_motion_mode",
+                    "image_motion_choices",
                     "max_narration_words",
                     "subtitle_customization_enabled",
                     "subtitle_enabled",
@@ -183,7 +195,7 @@ def render_single_output(morpheus_video_studio, video_params):
                     if key in video_params:
                         gen_params[key] = video_params[key]
 
-                # MoneyPrinter settings may override the selected template's media size.
+                # Video settings may override the selected template's media size.
                 gen_params["media_width"] = video_params.get(
                     "media_width", st.session_state.get("template_media_width")
                 )
@@ -318,7 +330,12 @@ def render_batch_output(morpheus_video_studio, video_params):
                 "media_strategy",
                 "stock_selection_mode",
                 "transition_mode",
+                "transition_choices",
                 "transition_duration",
+                "min_segment_duration",
+                "scene_trailing_silence",
+                "image_motion_mode",
+                "image_motion_choices",
                 "max_narration_words",
                 "subtitle_customization_enabled",
                 "subtitle_enabled",
