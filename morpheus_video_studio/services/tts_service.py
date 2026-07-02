@@ -14,6 +14,7 @@
 TTS (Text-to-Speech) Service - Supports both local and ComfyUI inference
 """
 
+import asyncio
 import os
 import uuid
 from pathlib import Path
@@ -260,14 +261,30 @@ class TTSService(ComfyBaseService):
             f"voice={final_voice}, speed={final_speed}x, instruct={final_instruct!r}"
         )
         timeout = httpx.Timeout(connect=8.0, read=120.0, write=30.0, pool=30.0)
-        try:
-            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
-                response = await client.post(f"{final_base_url}/v1/audio/speech", json=payload)
-                response.raise_for_status()
-                Path(output_path).write_bytes(response.content)
-        except httpx.HTTPError as exc:
-            logger.error(f"OmniVoice TTS failed: {exc}")
-            raise RuntimeError(format_omnivoice_error(exc)) from exc
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                    response = await client.post(f"{final_base_url}/v1/audio/speech", json=payload)
+                    response.raise_for_status()
+                    Path(output_path).write_bytes(response.content)
+                break
+            except httpx.HTTPError as exc:
+                # Client errors (4xx) are not transient: bad instruct/voice won't
+                # fix itself, so surface them immediately.
+                is_client_error = (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and exc.response.status_code < 500
+                )
+                if is_client_error or attempt == max_attempts:
+                    logger.error(f"OmniVoice TTS failed (attempt {attempt}/{max_attempts}): {exc}")
+                    raise RuntimeError(format_omnivoice_error(exc)) from exc
+                wait_seconds = 2 ** (attempt - 1)
+                logger.warning(
+                    f"OmniVoice TTS transient error (attempt {attempt}/{max_attempts}): {exc}, "
+                    f"retrying in {wait_seconds}s"
+                )
+                await asyncio.sleep(wait_seconds)
 
         logger.info(f"✅ Generated audio (OmniVoice): {output_path}")
         return output_path
@@ -369,7 +386,8 @@ class TTSService(ComfyBaseService):
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
                 
                 logger.info(f"Downloading audio from {audio_path} to {output_path}")
-                async with httpx.AsyncClient() as client:
+                download_timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=30.0)
+                async with httpx.AsyncClient(timeout=download_timeout) as client:
                     response = await client.get(audio_path)
                     response.raise_for_status()
                     

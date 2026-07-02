@@ -176,7 +176,13 @@ class VideoService:
                 return self._concat_filter(videos, output)
 
     def _concat_xfade(self, videos: List[str], output: str, duration: float = 0.5) -> str:
-        """Concatenate clips with synchronized video/audio crossfades."""
+        """Concatenate clips with video crossfades that never eat narration.
+
+        Every clip except the last is first extended by the fade duration
+        (frozen last frame + padded silence), so the crossfade consumes the
+        padding instead of real content: narration from adjacent clips never
+        overlaps, and the output keeps the full duration of every clip.
+        """
         if len(videos) < 2:
             shutil.copy(videos[0], output)
             return output
@@ -184,24 +190,43 @@ class VideoService:
         inputs = [ffmpeg.input(video) for video in videos]
         durations = [self._get_video_duration(video) for video in videos]
         fade_duration = max(0.1, min(duration, min(durations) / 3))
-        video_stream = inputs[0].video
-        audio_stream = inputs[0].audio
-        offset = durations[0] - fade_duration
+
+        video_streams = []
+        audio_streams = []
+        for index, stream in enumerate(inputs):
+            video_stream = stream.video
+            audio_stream = stream.audio
+            if index < len(inputs) - 1:
+                video_stream = video_stream.filter(
+                    "tpad", stop_mode="clone", stop_duration=fade_duration
+                )
+                audio_stream = audio_stream.filter("apad", pad_dur=fade_duration)
+            video_streams.append(video_stream)
+            audio_streams.append(audio_stream)
+
+        video_stream = video_streams[0]
+        audio_stream = audio_streams[0]
+        # Transitions land on the padded tail, right after the real content.
+        offset = durations[0]
 
         for index in range(1, len(inputs)):
             video_stream = ffmpeg.filter(
-                [video_stream, inputs[index].video],
+                [video_stream, video_streams[index]],
                 "xfade",
                 transition="fade",
                 duration=fade_duration,
                 offset=max(0, offset),
             )
+            # The outgoing side of the crossfade is padded silence, and
+            # c2=nofade keeps the incoming narration onset at full volume.
             audio_stream = ffmpeg.filter(
-                [audio_stream, inputs[index].audio],
+                [audio_stream, audio_streams[index]],
                 "acrossfade",
                 d=fade_duration,
+                c1="tri",
+                c2="nofade",
             )
-            offset += durations[index] - fade_duration
+            offset += durations[index]
 
         try:
             (
