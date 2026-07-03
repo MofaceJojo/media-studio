@@ -1,445 +1,97 @@
-<h1 align="center">🎬 Media Studio —— 内容优先的音视频创作平台</h1>
+<h1 align="center">🎬 Morpheus Video Studio</h1>
+
+<p align="center"><b>内容优先 · 零成本本地栈 · 稳定出片的 AI 音视频创作工作台</b></p>
 
 <p align="center"><a href="README_EN.md">English</a> | <b>中文</b></p>
 
 <p align="center">
-  <a href="https://www.bilibili.com/video/BV1WzyGBnEVp/?vd_source=e7e7d4ca8db9a18c80f17a24a6582fca" target="_blank"><img src="https://img.shields.io/badge/🎥 视频教程-EA4C89" alt="视频教程"></a>
-  <a href="https://github.com/MofaceJojo/morpheus-video-studio/releases" target="_blank"><img src="https://img.shields.io/badge/📦 Windows包-50C878" alt="Windows整合包"></a>
-  <a href="https://aidc-ai.github.io/Morpheus Video Studio/zh" target="_blank"><img src="https://img.shields.io/badge/📘 使用文档-4A90E2" alt="使用文档"></a>
-  <a href="https://github.com/MofaceJojo/morpheus-video-studio/stargazers"><img src="https://img.shields.io/github/stars/MofaceJojo/morpheus-video-studio.svg" alt="Stargazers"></a>
-  <a href="https://github.com/MofaceJojo/morpheus-video-studio/issues"><img src="https://img.shields.io/github/issues/MofaceJojo/morpheus-video-studio.svg" alt="Issues"></a>
-  <a href="https://github.com/MofaceJojo/morpheus-video-studio/network/members"><img src="https://img.shields.io/github/forks/MofaceJojo/morpheus-video-studio.svg" alt="Forks"></a>
-  <a href="https://github.com/MofaceJojo/morpheus-video-studio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MofaceJojo/morpheus-video-studio.svg" alt="License"></a>
+  <a href="https://github.com/MofaceJojo/media-studio/stargazers"><img src="https://img.shields.io/github/stars/MofaceJojo/media-studio.svg" alt="Stargazers"></a>
+  <a href="https://github.com/MofaceJojo/media-studio/issues"><img src="https://img.shields.io/github/issues/MofaceJojo/media-studio.svg" alt="Issues"></a>
+  <a href="https://github.com/MofaceJojo/media-studio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MofaceJojo/media-studio.svg" alt="License"></a>
 </p>
 
-https://github.com/user-attachments/assets/a42e7457-fcc8-40da-83fc-784c45a8b95d
+Morpheus Video Studio 把 **内容输入、音频生成、视频生成、数字人口播、素材复用** 串成一条完整的创作流水线。输入一段文案或一个主题，本地完成配音、配图、分镜、剪辑、字幕，产出可直接上传 YouTube / B站 / 抖音的成片。
 
-<br/>
+## 🎯 三大设计目标
 
-Media Studio 旨在把 **内容输入、音频生成、视频生成、数字人口播、素材复用** 统一到一个平台里。
-
-只需输入一个 **主题**，系统目前仍可自动完成：
-- ✍️ 撰写视频文案  
-- 🎨 生成 AI 配图/视频  
-- 🗣️ 合成语音解说  
-- 🎵 添加背景音乐  
-- 🎬 一键合成视频  
-
-**零门槛，零剪辑经验**，让视频创作成为一句话的事！
-
-
-## 🖥️ Web 界面预览
-
-![Web UI界面](resources/webui.png)
-
-
-## 📋 最近更新
-
-- ✅ **2026-01-26**: 新增「动作迁移」模块，上传参考视频和图片进行动作迁移
-- ✅ **2026-01-14**: 新增「数字人口播」和「图生视频」流水线，新增多语言 TTS 音色支持
-- ✅ **2026-01-06**: 新增 Local ComfyUI 48G 显存机器调用支持
-- ✅ **2025-12-28**: 支持 Local ComfyUI 并发限制可配置，优化 LLM 返回结构化数据的逻辑
-- ✅ **2025-12-17**: 支持 ComfyUI API Key 配置，支持 Nano Banana 模型调用，API 接口支持模板自定义参数
-- ✅ **2025-12-10**: 侧边栏内置 FAQ，锁定 edge-tts 版本修复 TTS 服务不稳定问题
-- ✅ **2025-12-08**: 支持固定脚本多种分割方式(段落/行/句子)，优化模板选择交互逻辑支持直接预览选择
-- ✅ **2025-12-06**: 修复视频生成 API 返回 URL 路径处理，支持跨平台兼容
-- ✅ **2025-12-05**: 新增 Windows 整合包下载，优化图片与视频反推工作流
-- ✅ **2025-12-04**: 新增「自定义素材」功能，支持用户上传自己的照片和视频，AI 智能分析生成脚本
-- ✅ **2025-11-18**: 优化 Local ComfyUI 服务调用支持并行处理，新增历史记录页面，支持批量创建视频任务
-
+1. **零成本生成** —— 除了文案 LLM 的 API 调用，其余全部免费：本地 OmniVoice / Edge TTS 配音、本地 ComfyUI 出图、免费素材源（Pexels / Pixabay）、HyperFrames 本地排版渲染。
+2. **稳定出片** —— 以"音频时长驱动视频时长"为核心不变量：先生成旁白、读取真实音频时长，再由它决定分镜数量与每个镜头的停留时间。转场不吞旁白，成片自动质检。
+3. **手动分发，机器备料** —— 成片旁自动生成 `final.srt` 精确字幕，发布保持手动上传（规避平台风控），系统只负责把素材备好。
 
 ## ✨ 功能亮点
 
-- ✅ **全自动生成** - 输入主题，自动生成完整视频
-- ✅ **AI 智能文案** - 根据主题智能创作解说词，无需自己写脚本
-- ✅ **AI 生成配图** - 每句话都配上精美的 AI 插图
-- ✅ **AI 生成视频** - 支持使用 AI 视频生成模型（如 WAN 2.1）创建动态视频内容
-- ✅ **AI 生成语音** - 支持 Edge-TTS、Index-TTS 等众多主流 TTS 方案
-- ✅ **背景音乐** - 支持添加 BGM，让视频更有氛围
-- ✅ **视觉风格** - 多种模板可选，打造独特视频风格
-- ✅ **灵活尺寸** - 支持竖屏、横屏等多种视频尺寸
-- ✅ **多种 AI 模型** - 支持 GPT、通义千问、DeepSeek、Ollama 等
-- ✅ **原子能力灵活组合** - 基于 ComfyUI 架构，可使用预置工作流，也可自定义任意能力（如替换生图模型为 FLUX、替换 TTS 为 ChatTTS 等）
+- ✅ **音频驱动节奏** —— 文案有多长，音频多长，视频就多长；镜头切换频率由真实旁白时长推导
+- ✅ **镜头节奏预设** —— 短视频快节奏 / YouTube 舒缓节奏一键切换，横屏 16:9 自动匹配舒缓档
+- ✅ **Ken Burns 镜头运动** —— 静态图自动获得缓慢缩放/平移，杜绝"一张图杵着不动"
+- ✅ **成片自检门** —— 每次出片自动校验：音视频流完整性、时长偏差、静止画面、旁白断裂
+- ✅ **SRT 字幕导出** —— 按每段旁白真实时长精确计时，上传平台时直接选用
+- ✅ **多风格出图** —— 真人写真 / 手绘奇幻 / 国风 / 赛博朋克 / 儿童绘本等风格预设，全部基于本地模型
+- ✅ **多工坊架构** —— 内容库沉淀素材，音频工坊出声音资产，视频工坊出成片，数字人口播独立成线
+- ✅ **灵活画幅** —— 竖屏 9:16（抖音）/ 横屏 16:9（YouTube）/ 方形 1:1
 
+## 📊 生成流程
 
-## 📊 视频生成流程
-
-Morpheus Video Studio 采用模块化设计，整个视频生成流程清晰简洁：
-
-![视频生成流程图](resources/flow.png)
-
-从输入文本到最终视频输出，整个流程简洁清晰：**文案生成 → 配图规划 → 逐帧处理 → 视频合成**
-
-每个环节都支持灵活定制，可选择不同的 AI 模型、音频引擎、视觉风格等，满足个性化创作需求。
-
-
-## 🎬 视频示例
-
-以下是使用 Morpheus Video Studio 生成的实际案例，展示了不同主题和风格的视频效果：
-
-### 📱 扩展模块视频展示
-
-<table>
-<tr>
-<td width="33%">
-<h3>👤 数字人口播</h3>
-<video src="https://github.com/user-attachments/assets/7c122563-c2e0-4dcd-a73c-25ba1d4fa2dd" controls width="100%"></video>
-<p align="center"><b>韩语数字人口播</b></p>
-</td>
-<td width="33%">
-<h3>🖼️ 图生视频</h3>
-<video src="https://github.com/user-attachments/assets/5b4eef17-07d0-4bde-9748-2ed68cc9888e" controls width="100%"></video>
-<p align="center"><b>卡通视频</b></p>
-</td>
-<td width="33%">
-<h3>💃 动作迁移</h3>
-<video src="https://github.com/user-attachments/assets/7b1240bc-e965-434c-b343-118ec4793d4f" controls width="100%"></video>
-<p align="center"><b>跳舞小猫</b></p>
-</td>
-</tr>
-</table>
-
-
-### 📱 竖屏视频展示
-
-<table>
-<tr>
-<td width="33%">
-<h3>🌄 人文纪实类 - 视频默认模版</h3>
-<video src="https://github.com/user-attachments/assets/e6716c1d-78de-453d-84c2-10873c8c595f" controls width="100%"></video>
-<p align="center"><b>旅行路上的风景让人流连忘返</b></p>
-</td>
-<td width="33%">
-<h3>🔍 文化解构类 - 视频默认模版</h3>
-<video src="https://github.com/user-attachments/assets/f5de75f6-135a-4ab4-9f5f-079f649764d5" controls width="100%"></video>
-<p align="center"><b>Santa ID</b></p>
-</td>
-<td width="33%">
-<h3>🔭 科学思辨类 - 视频默认模版</h3>
-<video src="https://github.com/user-attachments/assets/ceb8b0df-8331-4e1f-88e7-db5b295a1c1d" controls width="100%"></video>
-<p align="center"><b>为什么我们还没有找到外星文明？</b></p>
-</td>
-</tr>
-<tr>
-<td width="33%">
-<h3>🌱 个人成长类 - 克隆音色</h3>
-<video src="https://github.com/user-attachments/assets/1bad9a49-df83-4905-9cc8-9a7640e9c7d8" controls width="100%"></video>
-<p align="center"><b>如何提升自己</b></p>
-</td>
-<td width="33%">
-<h3>🧠 深度思考类 - 默认模板</h3>
-<video src="https://github.com/user-attachments/assets/663b705a-2aea-44bc-b266-4bb27aa255a8" controls width="100%"></video>
-<p align="center"><b>如何理解反脆弱</b></p>
-</td>
-<td width="33%">
-<h3>🏯 历史文化类 - 固定画面</h3>
-<video src="https://github.com/user-attachments/assets/56e0a018-fa99-47eb-a97f-fc2fa8915724" controls width="100%"></video>
-<p align="center"><b>资治通鉴</b></p>
-</td>
-</tr>
-<tr>
-<td width="33%">
-<h3>☀️ 情感类 - 克隆音色</h3>
-<video src="https://github.com/user-attachments/assets/4687df95-dd21-4a7b-b01e-f33a7b646644" controls width="100%"></video>
-<p align="center"><b>冬日暖阳</b></p>
-</td>
-<td width="33%">
-<h3>📜 小说解说类 - 自创脚本</h3>
-<video src="https://github.com/user-attachments/assets/d354465e-3fa8-40b4-93e9-61ad75ef0697" controls width="100%"></video>
-<p align="center"><b>斗破苍穹</b></p>
-</td>
-<td width="33%">
-<h3>🧬 知识科普类 - Qwen生图</h3>
-<video src="https://github.com/user-attachments/assets/8ac21768-41ce-4d41-acdd-e3dd3eb9725a" controls width="100%"></video>
-<p align="center"><b>养生知识</b></p>
-</td>
-</tr>
-</table>
-
-### 🖥️ 横屏视频展示
-
-<table>
-<tr>
-<td width="50%">
-<h3>💰 副业赚钱 - 电影模板</h3>
-<video src="https://github.com/user-attachments/assets/c9209d4e-73a6-4b82-aaad-cf102248c9e2" controls width="100%"></video>
-<p align="center"><b>副业赚钱</b></p>
-</td>
-<td width="50%">
-<h3>🏛️ 历史解说 - 自定义模板</h3>
-<video src="https://github.com/user-attachments/assets/a767c452-d5f1-4cff-bb34-b80fff0d4c3e" controls width="100%"></video>
-<p align="center"><b>资治通鉴启示录</b></p>
-</td>
-</tr>
-</table>
-
-> 💡 **提示**: 这些视频都是通过输入一个主题关键词，由 AI 全自动生成的，无需任何视频剪辑经验！
-
-
-<div id="tutorial-start" />
-
+```
+文案（输入或 LLM 生成）
+   → TTS 配音（OmniVoice / Edge TTS，读取真实时长）
+   → 分镜规划（音频时长 → 镜头数量与停留时间）
+   → 逐帧生产（ComfyUI 出图 → HTML 模板排版 → Ken Burns 运动 → 视频段）
+   → 拼接合成（转场垫尾帧，旁白零损失）+ BGM
+   → 成片自检（时长 / 静帧 / 音轨完整性）
+   → final.mp4 + final.srt
+```
 
 ## 🚀 快速开始
 
-### 🪟 Windows 一键整合包（推荐 Windows 用户使用）
+### 环境依赖
 
-**无需安装 Python、uv 或 ffmpeg，一键开箱即用！**
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)（Python 包管理器）
+- [ffmpeg](https://ffmpeg.org/download.html)（`brew install ffmpeg` / `apt install ffmpeg`）
+- 本地 [ComfyUI](https://github.com/Comfy-Org/ComfyUI)（图像生成，默认 `http://127.0.0.1:8188`）
+- 可选：[OmniVoice Studio](https://github.com/debpalash/OmniVoice-Studio)（高质量本地 TTS，缺省时自动回退 Edge TTS）
 
-👉 **[下载 Windows 一键整合包](https://github.com/MofaceJojo/morpheus-video-studio/releases/latest)**
-
-1. 下载最新的 Windows 一键整合包并解压
-2. 双击运行 `start.bat` 启动 Web 界面
-3. 浏览器会自动打开 http://localhost:8501
-4. 在「⚙️ 系统配置」中配置 LLM API 和图像生成服务
-5. 开始生成视频！
-
-> 💡 **提示**: 整合包已包含所有依赖，无需手动安装任何环境。首次使用只需配置 API 密钥即可。
-
-
-### 从源码安装（适合 macOS / Linux 用户或需要自定义的用户）
-
-#### 前置环境依赖
-
-在开始之前，需要先安装 Python 包管理器 `uv` 和视频处理工具 `ffmpeg`：
-
-##### 安装 uv
-
-请访问 uv 官方文档查看适合你系统的安装方法：  
-👉 **[uv 安装指南](https://docs.astral.sh/uv/getting-started/installation/)**
-
-安装完成后，在终端中运行 `uv --version` 验证安装成功。
-
-##### 安装 ffmpeg
-
-**macOS**
-```bash
-brew install ffmpeg
-```
-
-**Ubuntu / Debian**
-```bash
-sudo apt update
-sudo apt install ffmpeg
-```
-
-**Windows**
-- 下载地址：https://ffmpeg.org/download.html
-- 下载后解压，将 `bin` 目录添加到系统环境变量 PATH 中
-
-安装完成后，在终端中运行 `ffmpeg -version` 验证安装成功。
-
-
-#### 第一步：下载项目
+### 启动
 
 ```bash
-git clone https://github.com/MofaceJojo/morpheus-video-studio.git
-cd Morpheus Video Studio
-```
-
-#### 第二步：启动 Web 界面
-
-```bash
-# 使用 uv 运行（推荐，会自动安装依赖）
+git clone https://github.com/MofaceJojo/media-studio.git
+cd media-studio
 uv run streamlit run web/app.py
 ```
 
-浏览器会自动打开 http://localhost:8501
+浏览器自动打开 `http://localhost:8501`，在 **⚙️ Settings** 页配置 LLM API 与本地服务地址后即可使用。
 
-#### 第三步：在 Web 界面配置
+### 页面导览
 
-首次使用时，展开「⚙️ 系统配置」面板，填写：
-- **LLM 配置**: 选择 AI 模型（如通义千问、GPT 等）并填入 API Key
-- **图像配置**: 如需生成图片，配置 ComfyUI 地址或 Local ComfyUI API Key
+| 页面 | 用途 |
+|---|---|
+| 🏠 Studio | 工作台首页与快速创作入口 |
+| 📚 Content Library | 沉淀 PDF、文本、书摘、金句等内容素材 |
+| 🎙️ Audio Workshop | 生成可复用的旁白与声音资产 |
+| 🎬 Video Workshop | 文案 + 素材 + 语音 → 成片 |
+| 🤖 Digital Human | 数字人口播 |
+| 🗂️ Asset Library | 生成物回收与复用 |
+| ⚙️ Settings | LLM / ComfyUI / OmniVoice / 本地服务统一配置 |
 
-配置好后点击「保存配置」，就可以开始生成视频了！
+## 📋 最近更新
 
-<div id="tutorial-end" />
+- ✅ **2026-07**: 镜头节奏硬约束与 YouTube 舒缓档；成片自检门；SRT 字幕导出；flux-schnell (GGUF) 工作流；修复 OmniVoice 闲置卡死；`video.py` 模块化重构；GitHub Actions CI
+- ✅ **2026-07**: 转场不再吞旁白（垫尾帧 + 静音填充）；TTS 瞬时故障自动重试
+- ✅ **2026-06**: Morpheus 品牌重塑；快速创作流；风格标签体系；泛素材优先策略
 
-## 💻 使用方法
+## ❓ 常见问题
 
-打开 Web 界面后，你会看到三栏布局，下面详细讲解每个部分：
+见 [docs/FAQ_CN.md](docs/FAQ_CN.md)。生成链路排查顺序：先看 `frames/*_audio.wav` 是否持续生成，再看 `frames/*_image_shot_*.png`，再看 `frames/*_segment.mp4`，最后查拼接阶段与后端服务日志。
 
+## 🤝 致谢
 
-### ⚙️ 系统配置（首次必填）
+本项目基于 AIDC-AI 开源的原型项目二次开发（Apache 2.0），设计另受以下开源项目启发：
 
-首次使用时需要配置，点击展开「⚙️ 系统配置」面板：
-
-#### 1. LLM 配置（大语言模型）
-用于生成视频文案的 AI。
-
-**快速选择预设**  
-- 通过下拉菜单选择预设模型（通义千问、GPT-4o、DeepSeek 等）
-- 选择后会自动填充 base_url 和 model
-- 点击「🔑 获取 API Key」链接去注册并获取密钥
-
-**手动配置**  
-- API Key: 填入你的密钥
-- Base URL: API 地址
-- Model: 模型名称
-
-#### 2. 图像配置
-用于生成视频配图的 AI。
-
-**本地部署（推荐）**  
-- ComfyUI URL: 本地 ComfyUI 服务地址（默认 http://127.0.0.1:8188）
-- 点击「测试连接」确认服务可用
-
-**云端部署**  
-- Local ComfyUI API Key: 云端图像生成服务的密钥
-
-配置完成后点击「保存配置」。
-
-
-### 📝 内容输入（左侧栏）
-
-#### 生成模式
-- **AI 生成内容**: 输入主题，AI 自动创作文案
-  - 适合：想快速生成视频，让 AI 写稿
-  - 例如：「为什么要养成阅读习惯」
-- **固定文案内容**: 直接输入完整文案，跳过 AI 创作
-  - 适合：已有现成文案，直接生成视频
-
-#### 背景音乐（BGM）
-- **无 BGM**: 纯人声解说
-- **内置音乐**: 选择预置的背景音乐（如 default.mp3）
-- **自定义音乐**: 将你的音乐文件（MP3/WAV 等）放到 `bgm/` 文件夹
-- 点击「试听 BGM」可以预览音乐
-
-
-### 🎤 语音设置（中间栏）
-
-#### TTS 工作流
-- 从下拉菜单选择 TTS 工作流（支持 Edge-TTS、Index-TTS 等）
-- 系统会自动扫描 `workflows/` 文件夹中的 TTS 工作流
-- 如果懂 ComfyUI，可以自定义 TTS 工作流
-
-#### 参考音频（可选）
-- 上传参考音频文件用于声音克隆（支持 MP3/WAV/FLAC 等格式）
-- 适用于支持声音克隆的 TTS 工作流（如 Index-TTS）
-- 上传后可以直接试听
-
-#### 预览功能
-- 输入测试文本，点击「预览语音」即可试听效果
-- 支持使用参考音频进行预览
-
-
-### 🎨 视觉设置（中间栏）
-
-#### 图像生成
-决定 AI 生成什么风格的配图。
-
-**ComfyUI 工作流**  
-- 从下拉菜单选择图像生成工作流
-- 支持本地部署（selfhost）和云端（Local ComfyUI）工作流
-- 默认使用 `image_flux.json`
-- 如果懂 ComfyUI，可以放自己的工作流到 `workflows/` 文件夹
-
-**图像尺寸**  
-- 设置生成图像的宽度和高度（单位：像素）
-- 默认 1024x1024，可根据需要调整
-- 注意：不同的模型对尺寸有不同的限制
-
-**提示词前缀（Prompt Prefix）**  
-- 控制图像的整体风格（语言需要是英文的）
-- 例如：Minimalist black-and-white matchstick figure style illustration, clean lines, simple sketch style
-- 点击「预览风格」可以测试效果
-
-#### 视频模板
-决定视频画面的布局和设计。
-
-**模板命名规范**  
-- `static_*.html`: 静态模板（无需AI生成媒体，纯文字样式）
-- `image_*.html`: 图片模板（使用AI生成的图片作为背景）
-- `video_*.html`: 视频模板（使用AI生成的视频作为背景）
-
-**使用方法**  
-- 从下拉菜单选择模板，按尺寸分组显示（竖屏/横屏/方形）
-- 点击「预览模板」可以自定义参数测试效果
-- 如果懂 HTML，可以在 `templates/` 文件夹创建自己的模板
-- 🔗 [查看所有模板效果图](https://aidc-ai.github.io/Morpheus Video Studio/zh/user-guide/templates/#_3)
-
-
-### 🎬 生成视频（右侧栏）
-
-#### 生成按钮
-- 配置好所有参数后，点击「🎬 生成视频」
-- 会显示实时进度（生成文案 → 生成配图 → 合成语音 → 合成视频）
-- 生成完成后自动显示视频预览
-
-#### 进度显示
-- 实时显示当前步骤
-- 例如：「分镜 3/5 - 生成插图」
-
-#### 视频预览
-- 生成完成后自动播放
-- 显示视频时长、文件大小、分镜数等信息
-- 视频文件保存在 `output/` 文件夹
-
-
-### ❓ 常见问题
-
-**Q: 第一次使用需要多久？**  
-A: 生成时长取决于视频分镜数量、网络状况和 AI 推理速度，通常几分钟内即可完成。
-
-**Q: 视频效果不满意怎么办？**  
-A: 可以尝试：
-1. 更换 LLM 模型（不同模型文案风格不同）
-2. 调整图像尺寸和提示词前缀（改变配图风格）
-3. 更换 TTS 工作流或上传参考音频（改变语音效果）
-4. 尝试不同的视频模板和尺寸
-
-**Q: 费用大概多少？**  
-A: **本项目完全支持免费运行！**
-
-- **完全免费方案**: LLM 使用 Ollama（本地运行）+ ComfyUI 本地部署 = 0 元
-- **推荐方案**: LLM 使用通义千问（成本极低，性价比高）+ ComfyUI 本地部署
-- **云端方案**: LLM 使用 OpenAI + 图像使用 Local ComfyUI（费用较高但无需本地环境）
-
-**选择建议**：本地有显卡建议完全免费方案，否则推荐使用通义千问（性价比高）
-
-
-## 🤝 参考项目
-
-Morpheus Video Studio 的设计受到以下优秀开源项目的启发：
-
-- [NarratoAI](https://github.com/linyqh/NarratoAI) - 影视解说自动化工具
-- [ComfyKit](https://github.com/puke3615/ComfyKit) - ComfyUI 工作流封装库
+- [NarratoAI](https://github.com/linyqh/NarratoAI) —— 影视解说自动化工具
+- [ComfyKit](https://github.com/puke3615/ComfyKit) —— ComfyUI 工作流封装库
+- [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) / [OpenMontage](https://github.com/calesthio/OpenMontage) —— 节奏与质检思路借鉴
 
 感谢这些项目的开源精神！🙏
 
-
-## 💬 社区交流
-
-扫描下方二维码加入我们的社区，获取最新动态和技术支持：
-
-| 微信群 | Discord 社区 |
-| ---- | ---- |
-| <img src="resources/wechat.png" alt="微信交流群" width="250" /> | <img src="resources/discord.png" alt="Discord 社区" width="250" /> |
-
-
-## 📢 反馈与支持
-
-- 🐛 **遇到问题**: 提交 [Issue](https://github.com/MofaceJojo/morpheus-video-studio/issues)
-- 💡 **功能建议**: 提交 [Feature Request](https://github.com/MofaceJojo/morpheus-video-studio/issues)
-- ⭐ **给个 Star**: 如果这个项目对你有帮助，欢迎给个 Star 支持一下！
-
-
 ## 📝 许可证
 
-本项目采用 Apache 2.0 许可证，详情请查看 [LICENSE](LICENSE) 文件。
-
-
-## 📚 系列工作
-
-| 框架图 | 论文信息 |
-|:---:|---|
-| <img src="https://github.com/HITsz-TMG/VideoClaw/blob/main/FilmAgent-pics/framework.png" width="420" alt="FilmAgent framework"/> | **[SIGGRAPH Asia 2024] FilmAgent: Automating Virtual Film Production Through a Multi-Agent Collaborative Framework**<br>*Zhenran Xu, Longyue Wang, Jifang Wang, Zhouyi Li, Senbao Shi, Xue Yang, Yiyu Wang, Baotian Hu, Jun Yu, Min Zhang*<br>[[Paper](https://arxiv.org/pdf/2501.12909)] [[GitHub](https://github.com/HITsz-TMG/VideoClaw/blob/main/FilmAgent)] |
-| <img src="https://github.com/HITsz-TMG/Anim-Director/blob/main/Anim-Director/assets/visualeg.png" width="420" alt="Anim-Director result"/> | **[SIGGRAPH Asia 2024] Anim-Director: A Large Multimodal Model Powered Agent for Controllable Animation Video Generation**<br>*Yunxin Li, Haoyuan Shi, Baotian Hu, Longyue Wang, Jiashun Zhu, Jinyi Xu, Zhen Zhao, Min Zhang*<br>[[Paper](https://doi.org/10.1145/3680528.3687688)] [[GitHub](https://github.com/HITsz-TMG/Anim-Director/tree/main/Anim-Director)] |
-| <img src="https://github.com/AIDC-AI/ComfyUI-Copilot/blob/main/assets/Framework-v3.png" width="420" alt="Anim-Director result"/> | **[ACL 2025] ComfyUI-Copilot: An Intelligent Assistant for Automated Workflow Development**<br>*Zhenran Xu, Xue Yang, Yiyu Wang, Qingli Hu, Zijiao Wu, Longyue Wang, Weihua Luo, Kaifu Zhang, Baotian Hu, Min Zhang*<br>[[Paper](https://aclanthology.org/2025.acl-demo.61/)] [[GitHub](https://github.com/AIDC-AI/ComfyUI-Copilot)] |
-| <img src="https://raw.githubusercontent.com/HITsz-TMG/Anim-Director/main/AniMaker/assets/pipeline.png" width="420" alt="AniMaker pipeline"/> | **[SIGGRAPH Asia 2025] AniMaker: Multi-Agent Animated Storytelling with MCTS-Driven Clip Generation**<br>*Haoyuan Shi, Yunxin Li, Xinyu Chen, Longyue Wang, Baotian Hu, Min Zhang*<br>[[Paper](https://doi.org/10.1145/3757377.3764009)] [[GitHub](https://github.com/HITsz-TMG/Anim-Director/tree/main/AniMaker)] |
-
-
-
-## ⭐ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=MofaceJojo/morpheus-video-studio&type=Date)](https://star-history.com/#MofaceJojo/morpheus-video-studio&Date)
+本项目采用 Apache 2.0 许可证，详见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
