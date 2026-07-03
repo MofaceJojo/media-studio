@@ -88,3 +88,48 @@ def test_create_video_from_images_builds_single_segment_with_audio(tmp_path: Pat
     assert output.stat().st_size > 0
     assert service.has_audio_stream(str(output))
     assert 6.2 <= duration <= 6.5
+
+
+def test_plan_visual_shots_hard_cap_prevents_long_static_holds() -> None:
+    # 24s narration with max_shots=3 would hold each shot 8s; the hard cap
+    # lets the planner exceed max_shots so no shot exceeds 6s.
+    plan = plan_visual_shots(
+        24.0,
+        min_shot_seconds=3.2,
+        max_shot_seconds=6.0,
+        max_shots=3,
+        hard_max_hold_seconds=6.0,
+    )
+
+    assert plan["shot_count"] >= 4
+    assert all(duration <= 6.0 + 1e-6 for duration in plan["shot_durations"])
+    assert round(sum(plan["shot_durations"]), 3) == 24.0
+
+
+def test_plan_visual_shots_hard_cap_keeps_short_narrations_unchanged() -> None:
+    with_cap = plan_visual_shots(
+        10.8,
+        min_shot_seconds=2.4,
+        max_shot_seconds=4.2,
+        max_shots=3,
+        hard_max_hold_seconds=7.0,
+    )
+    without_cap = plan_visual_shots(
+        10.8, min_shot_seconds=2.4, max_shot_seconds=4.2, max_shots=3
+    )
+
+    assert with_cap["shot_count"] == without_cap["shot_count"]
+
+
+def test_plan_visual_shots_hard_cap_respects_absolute_ceiling() -> None:
+    # Even extremely long narrations never explode past 8 shots.
+    plan = plan_visual_shots(
+        120.0,
+        min_shot_seconds=3.2,
+        max_shot_seconds=6.0,
+        max_shots=3,
+        hard_max_hold_seconds=6.0,
+    )
+
+    assert plan["shot_count"] == 8
+    assert round(sum(plan["shot_durations"]), 3) == 120.0

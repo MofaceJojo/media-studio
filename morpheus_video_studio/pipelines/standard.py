@@ -49,6 +49,8 @@ from morpheus_video_studio.utils.os_util import (
 )
 from morpheus_video_studio.utils.template_util import get_template_type
 from morpheus_video_studio.utils.prompt_helper import build_image_prompt
+from morpheus_video_studio.utils.video_qa import inspect_final_video
+from morpheus_video_studio.utils.subtitle_export import export_srt
 from morpheus_video_studio.services.video import VideoService
 
 
@@ -317,6 +319,14 @@ class StandardPipeline(LinearVideoPipeline):
             video_fps=ctx.params.get("video_fps", 30),
             min_segment_duration=float(ctx.params.get("min_segment_duration", 0.0)),
             scene_trailing_silence=float(ctx.params.get("scene_trailing_silence", 0.0)),
+            shot_min_seconds=float(ctx.params.get("shot_min_seconds", 2.4)),
+            shot_max_seconds=float(ctx.params.get("shot_max_seconds", 4.2)),
+            shot_max_count=int(ctx.params.get("shot_max_count", 3)),
+            shot_hard_max_hold_seconds=(
+                float(ctx.params["shot_hard_max_hold_seconds"])
+                if ctx.params.get("shot_hard_max_hold_seconds") is not None
+                else None
+            ),
             tts_inference_mode=tts_inference_mode or "local",
             voice_id=final_voice_id,
             tts_workflow=final_tts_workflow,
@@ -503,7 +513,7 @@ class StandardPipeline(LinearVideoPipeline):
         
         storyboard.final_video_path = final_video_path
         storyboard.completed_at = datetime.now()
-        
+
         # Copy to user-specified path if provided
         user_specified_output = ctx.params.get("output_path")
         if user_specified_output:
@@ -511,6 +521,30 @@ class StandardPipeline(LinearVideoPipeline):
             shutil.copy2(final_video_path, user_specified_output)
             logger.info(f"📹 Final video copied to: {user_specified_output}")
             ctx.final_video_path = user_specified_output
+
+        # SRT subtitles next to the final video, for manual platform uploads
+        try:
+            srt_path = str(Path(ctx.final_video_path).with_suffix(".srt"))
+            export_srt(
+                [(frame.narration, frame.duration) for frame in storyboard.frames],
+                srt_path,
+            )
+            logger.info(f"📝 Subtitles exported: {srt_path}")
+        except Exception as exc:
+            logger.warning(f"SRT 字幕导出失败（不影响交付）: {exc}")
+
+        # QA gate: warn loudly on broken output (never blocks delivery)
+        self._report_progress(ctx.progress_callback, "quality_check", 0.95)
+        try:
+            qa_report = await asyncio.to_thread(
+                inspect_final_video,
+                ctx.final_video_path,
+                expected_duration_seconds=storyboard.total_duration,
+            )
+            ctx.qa_warnings = list(qa_report.warnings)
+        except Exception as exc:
+            logger.warning(f"成片自检未能完成（不影响交付）: {exc}")
+            ctx.qa_warnings = []
             storyboard.final_video_path = user_specified_output
         
         logger.success(f"🎬 Video generation completed: {ctx.final_video_path}")
@@ -526,7 +560,8 @@ class StandardPipeline(LinearVideoPipeline):
             video_path=ctx.final_video_path,
             storyboard=ctx.storyboard,
             duration=ctx.storyboard.total_duration,
-            file_size=file_size
+            file_size=file_size,
+            qa_warnings=list(getattr(ctx, "qa_warnings", []) or []),
         )
         
         ctx.result = result

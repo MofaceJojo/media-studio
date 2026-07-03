@@ -56,6 +56,12 @@ class StoryboardConfig:
     frame_template: str = "1080x1920/default.html"  # Template path with size (e.g., "1080x1920/default.html")
     template_params: Optional[Dict[str, Any]] = None  # Custom template parameters (e.g., {"accent_color": "#ff0000"})
 
+    # Shot pacing (per-narration visual shot planning)
+    shot_min_seconds: float = 2.4              # Minimum hold per visual shot
+    shot_max_seconds: float = 4.2              # Preferred maximum hold per visual shot
+    shot_max_count: int = 3                    # Preferred maximum shots per narration
+    shot_hard_max_hold_seconds: Optional[float] = None  # Hard cap on a single shot's hold; None = no cap
+
     # Stock material and subtitle controls
     stock_selection_mode: str = "sequential"
     image_motion_mode: str = "float"
@@ -160,3 +166,4 @@ class VideoGenerationResult:
     duration: float                            # Total duration
     file_size: int                             # File size (bytes)
     created_at: datetime = field(default_factory=datetime.now)
+    qa_warnings: List[str] = field(default_factory=list)  # Final-video QA gate warnings (empty = passed)

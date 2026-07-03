@@ -39,7 +39,7 @@ _IMAGE_STYLE_PRESETS: Final[list[dict[str, str]]] = [
         "id": "eastern-period-drama",
         "label": "国风古风",
         "description": "东方审美、古典服饰、含蓄光影、戏剧氛围",
-        "workflow": "selfhost/image_qwen.json",
+        "workflow": "selfhost/image_dreamshaper_m4.json",
         "prompt_prefix": (
             "eastern classical aesthetic, traditional Chinese period drama, elegant fabric details, "
             "refined lighting, poetic atmosphere"
@@ -89,7 +89,7 @@ _IMAGE_STYLE_PRESETS: Final[list[dict[str, str]]] = [
         "id": "japanese-anime",
         "label": "日系二次元",
         "description": "清爽日漫、角色感、明亮配色、轻快节奏",
-        "workflow": "selfhost/image_nano_banana.json",
+        "workflow": "selfhost/image_dreamshaper_m4.json",
         "prompt_prefix": (
             "Japanese anime style, expressive character design, bright colors, clean linework, "
             "lively visual energy"
@@ -99,7 +99,7 @@ _IMAGE_STYLE_PRESETS: Final[list[dict[str, str]]] = [
         "id": "childrens-picture-book",
         "label": "儿童绘本",
         "description": "圆润造型、亲和色彩、故事书插画、适合儿童阅读",
-        "workflow": "selfhost/image_qwen.json",
+        "workflow": "selfhost/image_dreamshaper_m4.json",
         "prompt_prefix": (
             "children's picture book illustration, rounded forms, friendly colors, playful storytelling, "
             "soft storybook charm"

@@ -228,9 +228,10 @@ class FrameProcessor:
             )
             shot_plan = plan_visual_shots(
                 target_duration,
-                min_shot_seconds=2.4,
-                max_shot_seconds=4.2,
-                max_shots=3,
+                min_shot_seconds=config.shot_min_seconds,
+                max_shot_seconds=config.shot_max_seconds,
+                max_shots=config.shot_max_count,
+                hard_max_hold_seconds=config.shot_hard_max_hold_seconds,
             )
             frame.shot_count = shot_plan["shot_count"]
             frame.shot_prompts = build_shot_prompt_variants(frame.image_prompt, frame.shot_count)
@@ -551,6 +552,10 @@ class FrameProcessor:
                     motion_seed=frame.index,
                     min_duration=float(config.min_segment_duration or 0),
                     trailing_silence=float(config.scene_trailing_silence or 0),
+                    shot_min_seconds=config.shot_min_seconds,
+                    shot_max_seconds=config.shot_max_seconds,
+                    shot_max_count=config.shot_max_count,
+                    shot_hard_max_hold_seconds=config.shot_hard_max_hold_seconds,
                 )
             else:
                 segment_path = video_service.create_video_from_image(

@@ -56,6 +56,50 @@ DEFAULT_IMAGE_MOTIONS = ["gentle", "float"]
 
 DEFAULT_TRANSITIONS = ["fade", "dissolve", "fadeblack"]
 
+SHOT_PACING_PROFILES = {
+    "shorts": (
+        "短视频快节奏",
+        {
+            "shot_min_seconds": 2.4,
+            "shot_max_seconds": 4.2,
+            "shot_max_count": 3,
+            "shot_hard_max_hold_seconds": None,
+        },
+    ),
+    "youtube": (
+        "YouTube 舒缓节奏",
+        {
+            "shot_min_seconds": 3.2,
+            "shot_max_seconds": 6.0,
+            "shot_max_count": 4,
+            "shot_hard_max_hold_seconds": 7.0,
+        },
+    ),
+}
+
+
+def _resolve_image_motion_choices(selected: list[str]) -> list[str]:
+    """Static frames must be an explicit choice, never an accident.
+
+    Selecting "无特效" alone keeps frames static; an empty selection falls
+    back to the default gentle motions so segments never silently freeze.
+    """
+    effective = [item for item in (selected or []) if item != "none"]
+    if effective:
+        return effective
+    if selected and "none" in selected:
+        return []
+    return list(DEFAULT_IMAGE_MOTIONS)
+
+
+def _resolve_image_motion_mode(selected: list[str], use_random: bool) -> str:
+    choices = _resolve_image_motion_choices(selected)
+    if not choices:
+        return "none"
+    if len(choices) == 1:
+        return choices[0]
+    return "random" if use_random else "sequence"
+
 
 def _estimate_scene_trailing_silence(transition_duration: float) -> float:
     """Default to strict audio-driven timing without extra post-line silence."""
@@ -177,6 +221,16 @@ def render_video_generation_config(
                     value=True,
                     key="quick_video_transition_random",
                 )
+                pacing_profile = st.selectbox(
+                    "镜头节奏",
+                    list(SHOT_PACING_PROFILES),
+                    format_func=lambda value: SHOT_PACING_PROFILES[value][0],
+                    index=list(SHOT_PACING_PROFILES).index(
+                        "youtube" if ratio == "landscape" else "shorts"
+                    ),
+                    help="控制每个镜头的停留时间与切换频率。横屏 YouTube 建议舒缓节奏：单镜头停留 3-6 秒，且超长旁白会自动增加镜头避免画面长时间静止。",
+                    key="quick_video_pacing_profile",
+                )
             with output_col:
                 transition_duration = st.slider(
                     "转场时长(秒)",
@@ -215,7 +269,7 @@ def render_video_generation_config(
                     list(IMAGE_MOTION_OPTIONS),
                     default=DEFAULT_IMAGE_MOTIONS,
                     format_func=lambda value: IMAGE_MOTION_OPTIONS[value],
-                    help="可多选几种镜头运动特效；下面可以选择随机使用或按顺序轮换。",
+                    help="可多选几种镜头运动特效；下面可以选择随机使用或按顺序轮换。清空选择会自动回退到默认轻微运动；只有单独勾选\"无特效\"才会输出完全静止的画面。",
                     key="quick_video_image_motion_choices",
                 )
                 image_motion_random = st.checkbox(
@@ -332,13 +386,9 @@ def render_video_generation_config(
         "transition_duration": transition_duration,
         "min_segment_duration": min_segment_duration,
         "scene_trailing_silence": _estimate_scene_trailing_silence(float(transition_duration)),
-        "image_motion_mode": (
-            "none" if not image_motion_choices
-            else "random" if image_motion_random and len(image_motion_choices) > 1
-            else "sequence" if len(image_motion_choices) > 1
-            else image_motion_choices[0]
-        ),
-        "image_motion_choices": image_motion_choices,
+        "image_motion_mode": _resolve_image_motion_mode(image_motion_choices, image_motion_random),
+        "image_motion_choices": _resolve_image_motion_choices(image_motion_choices),
+        **SHOT_PACING_PROFILES[pacing_profile][1],
         "video_count": video_count,
         "max_narration_words": max(5, clip_duration * 4),
         "subtitle_customization_enabled": True,

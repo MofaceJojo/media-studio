@@ -344,21 +344,41 @@ def plan_visual_shots(
     max_shot_seconds: float = 3.2,
     max_shots: int = 4,
     shot_count: Optional[int] = None,
+    hard_max_hold_seconds: Optional[float] = None,
 ) -> dict:
-    """Plan how many visual shots should cover one narration segment."""
+    """Plan how many visual shots should cover one narration segment.
+
+    hard_max_hold_seconds: when set, a single shot is never allowed to hold
+    longer than this — the planner may exceed max_shots (up to an absolute
+    ceiling of 8) so long narrations don't turn into near-static frames.
+    """
     total_duration = round(max(float(total_duration_seconds or 0.0), 0.1), 3)
     min_shot_seconds = max(float(min_shot_seconds or 0.0), 0.8)
     max_shot_seconds = max(float(max_shot_seconds or 0.0), min_shot_seconds)
     max_shots = max(int(max_shots or 1), 1)
     preferred_shot_seconds = (min_shot_seconds + max_shot_seconds) / 2
 
+    candidate_ceiling = max_shots
+    if hard_max_hold_seconds is not None and shot_count is None:
+        hard_max_hold = max(float(hard_max_hold_seconds), max_shot_seconds)
+        required_shots = math.ceil(total_duration / hard_max_hold)
+        candidate_ceiling = min(max(max_shots, required_shots), 8)
+
     if shot_count is not None:
         selected_count = max(1, min(int(shot_count), max_shots))
     else:
         best_score = None
         selected_count = 1
-        for candidate in range(1, max_shots + 1):
+        for candidate in range(1, candidate_ceiling + 1):
             average = total_duration / candidate
+            # Candidates that break the hard hold cap are disqualified unless
+            # even the ceiling cannot satisfy it (then the ceiling wins below).
+            if (
+                hard_max_hold_seconds is not None
+                and average > max(float(hard_max_hold_seconds), max_shot_seconds)
+                and candidate < candidate_ceiling
+            ):
+                continue
             score = abs(average - preferred_shot_seconds)
             if average < min_shot_seconds:
                 score += (min_shot_seconds - average) * 4.0
