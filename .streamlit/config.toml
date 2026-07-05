@@ -1,0 +1,15 @@
+# Morpheus Video Studio — OLED dark studio theme
+# Tokens来源: design-system/morpheus-video-studio/MASTER.md
+[theme]
+base = "dark"
+primaryColor = "#7C3AED"
+backgroundColor = "#0F172A"
+secondaryBackgroundColor = "#171939"
+textColor = "#F1F5F9"
+font = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

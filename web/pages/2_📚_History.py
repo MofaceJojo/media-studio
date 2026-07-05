@@ -195,8 +195,9 @@ def render_grid_task_card(task: dict, morpheus_video_studio):
             st.video(video_path, autoplay=False, loop=False, muted=False)
         else:
             st.markdown(
-                f"<div style='background: #f0f0f0; height: 180px; display: flex; align-items: center; "
-                f"justify-content: center; border-radius: 4px; font-size: 48px;'>📹</div>",
+                f"<div style='background: var(--color-surface, #171939); border: 1px solid var(--color-border, rgba(255,255,255,0.08)); "
+                f"height: 180px; display: flex; align-items: center; "
+                f"justify-content: center; border-radius: 12px; font-size: 48px;'>📹</div>",
                 unsafe_allow_html=True
             )
         
