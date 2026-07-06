@@ -55,11 +55,16 @@ def _bad_request_error() -> APIStatusError:
     return APIStatusError("bad request", response=response, body=None)
 
 
+def _ok_response():
+    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))])
+
+
 def test_create_with_retry_retries_rate_limits(monkeypatch) -> None:
+    ok = _ok_response()
     client = SimpleNamespace(
         chat=SimpleNamespace(
             completions=SimpleNamespace(
-                create=AsyncMock(side_effect=[_rate_limit_error(), "ok"])
+                create=AsyncMock(side_effect=[_rate_limit_error(), ok])
             )
         )
     )
@@ -67,7 +72,24 @@ def test_create_with_retry_retries_rate_limits(monkeypatch) -> None:
 
     result = asyncio.run(_create_with_retry(client, model="m", messages=[]))
 
-    assert result == "ok"
+    assert result is ok
+    assert client.chat.completions.create.await_count == 2
+
+
+def test_create_with_retry_retries_empty_choices(monkeypatch) -> None:
+    """OpenRouter can return HTTP 200 with an error body and no choices."""
+    ok = _ok_response()
+    empty = SimpleNamespace(choices=None, error={"message": "Internal Server Error", "code": 500})
+    client = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(create=AsyncMock(side_effect=[empty, ok]))
+        )
+    )
+    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+
+    result = asyncio.run(_create_with_retry(client, model="m", messages=[]))
+
+    assert result is ok
     assert client.chat.completions.create.await_count == 2
 
 

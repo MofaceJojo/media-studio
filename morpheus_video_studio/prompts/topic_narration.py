@@ -27,7 +27,7 @@ The user will input a topic or theme. You need to create {n_storyboard} video st
 
 # Input Topic
 {topic}
-
+{recipe_block}
 # Output Requirements
 
 ## Narration Specifications
@@ -135,24 +135,29 @@ def build_topic_narration_prompt(
     topic: str,
     n_storyboard: int,
     min_words: int,
-    max_words: int
+    max_words: int,
+    recipe_block: str = "",
 ) -> str:
     """
     Build topic narration prompt
-    
+
     Args:
         topic: Topic or theme
         n_storyboard: Number of storyboard frames
         min_words: Minimum word count
         max_words: Maximum word count
-    
+        recipe_block: Optional vertical-specific recipe overlay (栏目配方);
+            takes precedence over the base style suggestions
+
     Returns:
         Formatted prompt
     """
+    section = f"\n{recipe_block.strip()}\n" if recipe_block and recipe_block.strip() else ""
     return TOPIC_NARRATION_PROMPT.format(
         topic=topic,
         n_storyboard=n_storyboard,
         min_words=min_words,
-        max_words=max_words
+        max_words=max_words,
+        recipe_block=section,
     )
 

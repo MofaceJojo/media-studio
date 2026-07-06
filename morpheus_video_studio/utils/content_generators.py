@@ -98,7 +98,8 @@ async def generate_narrations_from_topic(
     topic: str,
     n_scenes: int = 5,
     min_words: int = 5,
-    max_words: int = 20
+    max_words: int = 20,
+    content_recipe: Optional[str] = None,
 ) -> List[str]:
     """
     Generate narrations from topic using LLM
@@ -114,14 +115,19 @@ async def generate_narrations_from_topic(
         List of narration texts
     """
     from morpheus_video_studio.prompts import build_topic_narration_prompt
-    
-    logger.info(f"Generating {n_scenes} narrations from topic: {topic}")
-    
+    from morpheus_video_studio.prompts.content_recipes import get_recipe_block
+
+    logger.info(
+        f"Generating {n_scenes} narrations from topic: {topic}"
+        + (f" (recipe: {content_recipe})" if content_recipe else "")
+    )
+
     prompt = build_topic_narration_prompt(
         topic=topic,
         n_storyboard=n_scenes,
         min_words=min_words,
-        max_words=max_words
+        max_words=max_words,
+        recipe_block=get_recipe_block(content_recipe),
     )
     
     response = await llm_service(

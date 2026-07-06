@@ -29,6 +29,19 @@ from loguru import logger
 T = TypeVar("T", bound=BaseModel)
 
 
+_THINK_BLOCK_RE = re.compile(r"<think>[\s\S]*?</think>\s*", re.IGNORECASE)
+
+
+def _strip_reasoning_text(content: str) -> str:
+    """Drop inline chain-of-thought some providers leak into message content.
+
+    Reasoning models served through aggregators sometimes ignore the
+    reasoning-exclude flag and prepend <think>…</think> blocks; downstream
+    JSON parsing must never see them.
+    """
+    return _THINK_BLOCK_RE.sub("", content).strip()
+
+
 async def _create_with_retry(client: AsyncOpenAI, max_attempts: int = 3, **params):
     """chat.completions.create with backoff on transient failures.
 
@@ -38,8 +51,14 @@ async def _create_with_retry(client: AsyncOpenAI, max_attempts: int = 3, **param
     """
     for attempt in range(1, max_attempts + 1):
         try:
-            return await client.chat.completions.create(**params)
-        except (RateLimitError, APIConnectionError, APIStatusError) as exc:
+            response = await client.chat.completions.create(**params)
+            # Some aggregators (OpenRouter) return HTTP 200 with an error
+            # body and no choices during provider hiccups — treat as transient.
+            if not getattr(response, "choices", None):
+                provider_error = getattr(response, "error", None)
+                raise RuntimeError(f"empty choices in LLM response (provider error: {provider_error})")
+            return response
+        except (RateLimitError, APIConnectionError, APIStatusError, RuntimeError) as exc:
             is_client_error = (
                 isinstance(exc, APIStatusError)
                 and not isinstance(exc, RateLimitError)
@@ -224,6 +243,12 @@ class LLMService:
                     **kwargs
                 )
                 
+                if not getattr(response, "choices", None):
+                    provider_error = getattr(response, "error", None)
+                    raise RuntimeError(
+                        f"LLM 返回了无内容的响应（provider error: {provider_error}）。"
+                        "请重试或在 Settings 里更换模型。"
+                    )
                 choice = response.choices[0]
                 result = choice.message.content
                 if result is None:
@@ -232,8 +257,9 @@ class LLMService:
                         "LLM returned an empty response. "
                         f"Please try another model or check provider limits. finish_reason={finish_reason}"
                     )
+                result = _strip_reasoning_text(result)
                 logger.debug(f"LLM response length: {len(result)} chars")
-                
+
                 return result
         
         except APITimeoutError as e:
@@ -310,7 +336,8 @@ class LLMService:
                 "LLM returned an empty structured response. "
                 f"Please try another model or check provider limits. finish_reason={finish_reason}"
             )
-        
+        content = _strip_reasoning_text(content)
+
         logger.debug(f"Structured output response length: {len(content)} chars")
         
         # Parse JSON from response content

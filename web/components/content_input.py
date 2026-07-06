@@ -74,7 +74,9 @@ def _draft_is_stale(text: str, mode: str, n_scenes: int) -> bool:
     )
 
 
-def _generate_quick_create_draft(morpheus_video_studio, *, text: str, mode: str, n_scenes: int) -> str:
+def _generate_quick_create_draft(
+    morpheus_video_studio, *, text: str, mode: str, n_scenes: int, content_recipe: str | None = None
+) -> str:
     if morpheus_video_studio is None or morpheus_video_studio.llm is None:
         raise RuntimeError("当前未初始化 LLM，无法先生成文案草稿。")
     if not text.strip():
@@ -94,6 +96,7 @@ def _generate_quick_create_draft(morpheus_video_studio, *, text: str, mode: str,
                 morpheus_video_studio.llm,
                 topic=text,
                 n_scenes=n_scenes,
+                content_recipe=content_recipe,
             )
         )
     draft = "\n".join(item.strip() for item in narrations if str(item).strip())
@@ -179,6 +182,23 @@ def render_content_input(morpheus_video_studio=None):
                     except Exception as exc:
                         st.error(f"文档解析失败：{exc}")
             
+            content_recipe = "general"
+            if effective_mode == "generate":
+                from morpheus_video_studio.prompts.content_recipes import list_content_recipes
+
+                recipe_options = list_content_recipes()
+                recipe_ids = [item["id"] for item in recipe_options]
+                recipe_labels = {item["id"]: item["label"] for item in recipe_options}
+                recipe_descriptions = {item["id"]: item["description"] for item in recipe_options}
+                content_recipe = st.selectbox(
+                    "内容栏目",
+                    recipe_ids,
+                    format_func=lambda value: recipe_labels[value],
+                    help="选择垂类栏目后，AI 会按该栏目的固定结构写文案（如科普的'反常识开场+机制讲解'、排名的'倒序揭榜'），不再写成泛泛的感悟分享。",
+                    key="quick_create_content_recipe",
+                )
+                st.caption(f"📋 {recipe_descriptions[content_recipe]}")
+
             text = st.text_area(
                 tr("input.text"),
                 value=extracted_text if input_source == "上传文档" else "",
@@ -280,6 +300,7 @@ def render_content_input(morpheus_video_studio=None):
                                     text=text,
                                     mode=effective_mode,
                                     n_scenes=effective_n_scenes,
+                                    content_recipe=content_recipe,
                                 )
                             st.session_state["quick_create_ai_script_draft"] = draft
                             st.session_state["quick_create_ai_script_source_text"] = text
@@ -313,6 +334,7 @@ def render_content_input(morpheus_video_studio=None):
                 "n_scenes": effective_n_scenes,
                 "split_mode": split_mode,
                 "ai_script_draft": ai_script_draft,
+                "content_recipe": content_recipe,
             }
         
         else:

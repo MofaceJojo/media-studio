@@ -119,6 +119,7 @@ class StandardPipeline(LinearVideoPipeline):
             self._report_progress(ctx.progress_callback, "generating_narrations", 0.05)
             ctx.narrations = await generate_narrations_from_topic(
                 self.llm,
+                content_recipe=ctx.params.get("content_recipe"),
                 topic=text,
                 n_scenes=n_scenes,
                 min_words=min_words,
