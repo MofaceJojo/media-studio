@@ -16,16 +16,43 @@ LLM (Large Language Model) Service - Direct OpenAI SDK implementation
 Supports structured output via response_type parameter (Pydantic model).
 """
 
+import asyncio
 import json
 import re
 from typing import Optional, Type, TypeVar, Union
 
-from openai import APITimeoutError, AsyncOpenAI
+from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI, RateLimitError
 from pydantic import BaseModel
 from loguru import logger
 
 
 T = TypeVar("T", bound=BaseModel)
+
+
+async def _create_with_retry(client: AsyncOpenAI, max_attempts: int = 3, **params):
+    """chat.completions.create with backoff on transient failures.
+
+    Retries rate limits (429, common on free-tier OpenRouter models), 5xx
+    provider errors, and connection drops. Client errors (4xx) fail fast —
+    a bad request won't fix itself.
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return await client.chat.completions.create(**params)
+        except (RateLimitError, APIConnectionError, APIStatusError) as exc:
+            is_client_error = (
+                isinstance(exc, APIStatusError)
+                and not isinstance(exc, RateLimitError)
+                and exc.status_code < 500
+            )
+            if is_client_error or attempt == max_attempts:
+                raise
+            wait_seconds = 3 * attempt
+            logger.warning(
+                f"LLM transient error (attempt {attempt}/{max_attempts}): {exc}; "
+                f"retrying in {wait_seconds}s"
+            )
+            await asyncio.sleep(wait_seconds)
 
 
 class LLMService:
@@ -188,7 +215,8 @@ class LLMService:
                 )
             else:
                 # Standard text output mode
-                response = await client.chat.completions.create(
+                response = await _create_with_retry(
+                    client,
                     model=final_model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=temperature,
@@ -225,7 +253,12 @@ class LLMService:
             return
 
         extra_body = dict(kwargs.get("extra_body") or {})
-        extra_body.setdefault("reasoning", {"effort": "none", "exclude": True})
+        # Reasoning models on OpenRouter (gpt-oss, deepseek-r1, o-series…)
+        # reject requests that disable reasoning outright ("Reasoning is
+        # mandatory for this endpoint"). Lowest effort + exclude keeps those
+        # endpoints happy, keeps think-text out of the output, and is ignored
+        # by models without reasoning support.
+        extra_body.setdefault("reasoning", {"effort": "low", "exclude": True})
         kwargs["extra_body"] = extra_body
     
     async def _call_with_structured_output(
@@ -261,7 +294,8 @@ class LLMService:
         enhanced_prompt = f"{prompt}\n\n{json_schema_instruction}"
         
         # Call LLM with enhanced prompt
-        response = await client.chat.completions.create(
+        response = await _create_with_retry(
+            client,
             model=model,
             messages=[{"role": "user", "content": enhanced_prompt}],
             temperature=temperature,
