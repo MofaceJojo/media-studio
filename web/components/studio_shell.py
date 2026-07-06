@@ -1,8 +1,9 @@
 """Lightweight Media Studio shell helpers.
 
 Design tokens follow design-system/morpheus-video-studio/MASTER.md
-(OLED dark studio: violet primary #7C3AED, waveform-green accent #22C55E,
-midnight background #0F172A, Inter typography).
+(Navy professional light, chosen by the user 2026-07-06: navy primary
+#1E3A5F, confirm-green accent #059669, off-white background #F8FAFC,
+deep-navy sidebar, Inter typography).
 """
 
 from __future__ import annotations
@@ -19,29 +20,29 @@ def inject_studio_css() -> None:
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
         :root {
-          /* Design-system tokens (MASTER.md) */
-          --color-primary: #7C3AED;
-          --color-primary-soft: rgba(124, 58, 237, 0.16);
-          --color-primary-ring: rgba(124, 58, 237, 0.45);
-          --color-secondary: #6366F1;
-          --color-accent: #22C55E;
-          --color-bg: #0F172A;
-          --color-surface: #171939;
-          --color-surface-soft: rgba(255, 255, 255, 0.04);
-          --color-border: rgba(255, 255, 255, 0.08);
-          --color-border-strong: rgba(124, 58, 237, 0.38);
-          --color-ink: #F8FAFC;
-          --color-ink-body: #CBD5E1;
-          --color-ink-soft: #94A3B8;
+          /* Design-system tokens (MASTER.md, 2026-07-06 海军蓝浅色商务风) */
+          --color-primary: #1E3A5F;
+          --color-primary-soft: rgba(30, 58, 95, 0.08);
+          --color-primary-ring: rgba(30, 58, 95, 0.4);
+          --color-secondary: #2563EB;
+          --color-accent: #059669;
+          --color-bg: #F8FAFC;
+          --color-surface: #FFFFFF;
+          --color-surface-soft: #F1F3F5;
+          --color-border: #E4E7EB;
+          --color-border-strong: rgba(30, 58, 95, 0.35);
+          --color-ink: #0F172A;
+          --color-ink-body: #334155;
+          --color-ink-soft: #64748B;
           --color-destructive: #DC2626;
-          --shadow-sm: 0 4px 12px rgba(2, 6, 23, 0.35);
-          --shadow-md: 0 10px 28px rgba(2, 6, 23, 0.45);
+          --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+          --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.10);
           --radius-card: 12px;
           --radius-control: 10px;
 
           /* Legacy aliases kept for older page CSS */
           --studio-bg: var(--color-bg);
-          --studio-sidebar: #131630;
+          --studio-sidebar: #16304D;
           --studio-surface: var(--color-surface);
           --studio-surface-soft: var(--color-surface-soft);
           --studio-panel: var(--color-surface);
@@ -72,10 +73,7 @@ def inject_studio_css() -> None:
           visibility: hidden;
         }
         .stApp {
-          background:
-            radial-gradient(1100px 500px at 85% -10%, rgba(124, 58, 237, 0.14) 0%, transparent 60%),
-            radial-gradient(900px 420px at -10% 0%, rgba(99, 102, 241, 0.10) 0%, transparent 55%),
-            var(--color-bg);
+          background: linear-gradient(180deg, #FAFCFE 0%, var(--color-bg) 100%);
           color: var(--color-ink-body);
         }
         .block-container {
@@ -87,18 +85,18 @@ def inject_studio_css() -> None:
         /* ── Sidebar ─────────────────────────────────────────────── */
         section[data-testid="stSidebar"] {
           background: var(--studio-sidebar);
-          border-right: 1px solid var(--color-border);
+          border-right: 1px solid rgba(255, 255, 255, 0.08);
         }
         section[data-testid="stSidebar"] .block-container {
           padding-top: 0.8rem;
         }
         section[data-testid="stSidebar"] * {
-          color: var(--color-ink);
+          color: #E6EDF7;
         }
         section[data-testid="stSidebar"] [data-testid="stExpander"] {
-          border: 1px solid var(--color-border);
+          border: 1px solid rgba(255, 255, 255, 0.10);
           border-radius: var(--radius-card);
-          background: var(--color-surface-soft);
+          background: rgba(255, 255, 255, 0.04);
         }
         /* Active page highlighted in sidebar nav (nav-state-active) */
         section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"] {
@@ -107,18 +105,18 @@ def inject_studio_css() -> None:
           transition: background 0.18s ease-out, color 0.18s ease-out;
         }
         section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"]:hover {
-          background: var(--color-primary-soft);
+          background: rgba(255, 255, 255, 0.10);
         }
         section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][aria-current="page"] {
-          background: var(--color-primary-soft);
-          border-left: 3px solid var(--color-primary);
+          background: rgba(255, 255, 255, 0.12);
+          border-left: 3px solid #34D399;
         }
 
         /* ── Hero ────────────────────────────────────────────────── */
         .studio-hero {
-          border: 1px solid var(--color-border-strong);
+          border: 1px solid rgba(30, 58, 95, 0.5);
           border-radius: 14px;
-          background: linear-gradient(135deg, rgba(124, 58, 237, 0.16) 0%, rgba(23, 25, 57, 0.9) 45%, #10142E 100%);
+          background: linear-gradient(135deg, #24466E 0%, var(--color-primary) 55%, #16304D 100%);
           padding: 18px 20px;
           margin-bottom: 14px;
           box-shadow: var(--shadow-md);
@@ -132,7 +130,7 @@ def inject_studio_css() -> None:
           font-size: 11px;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: var(--color-accent);
+          color: #34D399;
           margin-bottom: 8px;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
@@ -140,13 +138,13 @@ def inject_studio_css() -> None:
           font-size: 26px;
           line-height: 1.15;
           font-weight: 700;
-          color: var(--color-ink);
+          color: #FFFFFF;
           margin-bottom: 6px;
         }
         .studio-subtitle {
           font-size: 14px;
           line-height: 1.55;
-          color: var(--color-ink-body);
+          color: #D7E3F2;
           max-width: 900px;
         }
         @media (max-width: 900px) {
@@ -232,9 +230,10 @@ def inject_studio_css() -> None:
           color: var(--color-ink-body);
         }
         .studio-metric {
-          border: 1px solid var(--color-border-strong);
+          border: 1px solid var(--color-border);
+          border-left: 3px solid var(--color-accent);
           border-radius: var(--radius-card);
-          background: linear-gradient(180deg, rgba(124, 58, 237, 0.12) 0%, var(--color-surface) 100%);
+          background: var(--color-surface);
           padding: 12px 14px;
           box-shadow: var(--shadow-sm);
         }
@@ -271,9 +270,9 @@ def inject_studio_css() -> None:
           min-height: 44px;
           border-radius: var(--radius-control) !important;
           border: 1px solid var(--color-primary) !important;
-          background: linear-gradient(180deg, #8B5CF6 0%, var(--color-primary) 100%) !important;
+          background: linear-gradient(180deg, #2B4C77 0%, var(--color-primary) 100%) !important;
           color: #FFFFFF !important;
-          box-shadow: 0 8px 22px rgba(124, 58, 237, 0.35) !important;
+          box-shadow: 0 6px 18px rgba(30, 58, 95, 0.28) !important;
           cursor: pointer;
           transition: filter 0.18s ease-out, box-shadow 0.18s ease-out !important;
         }
@@ -286,8 +285,8 @@ def inject_studio_css() -> None:
           box-shadow: var(--shadow-md) !important;
         }
         button[kind="primary"]:hover {
-          filter: brightness(1.08);
-          box-shadow: 0 10px 26px rgba(124, 58, 237, 0.45) !important;
+          filter: brightness(1.12);
+          box-shadow: 0 8px 22px rgba(30, 58, 95, 0.38) !important;
         }
         div[data-testid="stButton"] > button:active,
         div[data-testid="stDownloadButton"] > button:active,
@@ -416,7 +415,7 @@ def inject_studio_css() -> None:
           background: transparent !important;
         }
         div[data-baseweb="slider"] > div > div {
-          background-color: rgba(124, 58, 237, 0.22) !important;
+          background-color: rgba(30, 58, 95, 0.18) !important;
           background-image: none !important;
           border-radius: 999px !important;
           overflow: hidden !important;
@@ -454,8 +453,8 @@ def inject_studio_css() -> None:
 
         /* ── Multiselect tags ────────────────────────────────────── */
         span[data-baseweb="tag"] {
-          background: linear-gradient(180deg, rgba(124, 58, 237, 0.85) 0%, rgba(99, 102, 241, 0.85) 100%) !important;
-          border: 1px solid rgba(196, 181, 253, 0.5) !important;
+          background: linear-gradient(180deg, #2B4C77 0%, var(--color-primary) 100%) !important;
+          border: 1px solid rgba(30, 58, 95, 0.3) !important;
           color: #FFFFFF !important;
           box-shadow: none !important;
         }

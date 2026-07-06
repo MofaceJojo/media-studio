@@ -1,11 +1,11 @@
-# Morpheus Video Studio — OLED dark studio theme
-# Tokens来源: design-system/morpheus-video-studio/MASTER.md
+# Morpheus Video Studio — Navy professional light theme
+# Tokens来源: design-system/morpheus-video-studio/MASTER.md（2026-07-06 用户选定海军蓝浅色）
 [theme]
-base = "dark"
-primaryColor = "#7C3AED"
-backgroundColor = "#0F172A"
-secondaryBackgroundColor = "#171939"
-textColor = "#F1F5F9"
+base = "light"
+primaryColor = "#1E3A5F"
+backgroundColor = "#F8FAFC"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0F172A"
 font = "sans serif"
 
 [server]

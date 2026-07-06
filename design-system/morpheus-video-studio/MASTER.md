@@ -225,3 +225,25 @@ Before delivering any UI code, verify:
 - [ ] Responsive: 375px, 768px, 1024px, 1440px
 - [ ] No content hidden behind fixed navbars
 - [ ] No horizontal scroll on mobile
+
+
+---
+
+## ⚠️ 2026-07-06 配色修订（用户选定，覆盖上方 Colors 表）
+
+用户反馈黑底+紫色过于突兀，选定 **海军蓝·浅色商务风**：
+
+| Role | Hex | CSS Variable |
+|------|-----|--------------|
+| Primary | `#1E3A5F` | `--color-primary` |
+| Secondary | `#2563EB` | `--color-secondary` |
+| Accent/CTA | `#059669` | `--color-accent` |
+| Background | `#F8FAFC` | `--color-background` |
+| Surface/Card | `#FFFFFF` | `--color-surface` |
+| Foreground | `#0F172A` | `--color-foreground` |
+| Muted | `#F1F3F5` | `--color-muted` |
+| Border | `#E4E7EB` | `--color-border` |
+| Sidebar | `#16304D`（深海军蓝，文字 #E6EDF7） | `--studio-sidebar` |
+| Hero 渐变 | `#24466E → #1E3A5F → #16304D`，标题白字，kicker `#34D399` | — |
+
+模式：浅色为主；侧栏与 Hero 保留深海军蓝做品牌锚点。字体仍为 Inter。
