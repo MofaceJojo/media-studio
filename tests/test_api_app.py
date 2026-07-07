@@ -12,6 +12,10 @@ def test_api_app_loads_with_all_routers() -> None:
     # The API layer needs the full runtime deps (installed on CI via
     # `pip install -e .`); skip in stripped-down local interpreters.
     pytest.importorskip("comfykit")
+    # A dependency may ship its own top-level `api` package that shadows
+    # this repo's api/ directory (seen on CI); force repo-first resolution.
+    for name in [m for m in sys.modules if m == "api" or m.startswith("api.")]:
+        del sys.modules[name]
     from api.app import app
 
     # Route count varies with optional dependencies (fewer on CI), so we
