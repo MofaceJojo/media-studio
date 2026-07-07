@@ -233,29 +233,44 @@ class LLMService:
                     **kwargs
                 )
             else:
-                # Standard text output mode
-                response = await _create_with_retry(
-                    client,
-                    model=final_model,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs
-                )
-                
-                if not getattr(response, "choices", None):
-                    provider_error = getattr(response, "error", None)
-                    raise RuntimeError(
-                        f"LLM 返回了无内容的响应（provider error: {provider_error}）。"
-                        "请重试或在 Settings 里更换模型。"
+                # Standard text output mode. Reasoning models can silently
+                # burn the whole token budget on hidden thinking and return
+                # empty content with finish_reason=length — retry once with
+                # a much larger budget before giving up.
+                attempt_max_tokens = max_tokens
+                for budget_attempt in (1, 2):
+                    response = await _create_with_retry(
+                        client,
+                        model=final_model,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=temperature,
+                        max_tokens=attempt_max_tokens,
+                        **kwargs
                     )
-                choice = response.choices[0]
-                result = choice.message.content
-                if result is None:
+
+                    if not getattr(response, "choices", None):
+                        provider_error = getattr(response, "error", None)
+                        raise RuntimeError(
+                            f"LLM 返回了无内容的响应（provider error: {provider_error}）。"
+                            "请重试或在 Settings 里更换模型。"
+                        )
+                    choice = response.choices[0]
+                    result = choice.message.content
                     finish_reason = getattr(choice, "finish_reason", None)
+                    if (result is None or not result.strip()) and finish_reason == "length" and budget_attempt == 1:
+                        attempt_max_tokens = min(max_tokens * 4, 16000)
+                        logger.warning(
+                            "LLM 把 token 预算耗尽在推理上（finish_reason=length，正文为空），"
+                            f"以 max_tokens={attempt_max_tokens} 重试一次"
+                        )
+                        continue
+                    break
+
+                if result is None or not result.strip():
                     raise RuntimeError(
-                        "LLM returned an empty response. "
-                        f"Please try another model or check provider limits. finish_reason={finish_reason}"
+                        "LLM 返回了空正文（finish_reason="
+                        f"{finish_reason}）。该模型可能是重推理模型，建议在 Settings 换用"
+                        "指令型模型（如 nemotron-3-nano / gemma / deepseek-chat）。"
                     )
                 result = _strip_reasoning_text(result)
                 logger.debug(f"LLM response length: {len(result)} chars")
