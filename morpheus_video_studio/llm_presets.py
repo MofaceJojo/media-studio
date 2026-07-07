@@ -45,6 +45,13 @@ LLM_PRESETS: List[Dict[str, Any]] = [
         "api_key_url": "https://console.anthropic.com/settings/keys",
     },
     {
+        # Gemini 的 OpenAI 兼容端点；AI Studio API Key 有免费额度
+        "name": "Google Gemini",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "model": "gemini-2.5-flash",
+        "api_key_url": "https://aistudio.google.com/apikey",
+    },
+    {
         "name": "DeepSeek",
         "base_url": "https://api.deepseek.com",
         "model": "deepseek-chat",
