@@ -16,7 +16,7 @@ def test_api_app_loads_with_all_routers() -> None:
 
     # Route count varies with optional dependencies (fewer on CI), so we
     # assert only the essential routers that must always be present.
-    paths = {getattr(route, "path", "") for route in app.routes}
-    assert any("/health" in path for path in paths)
-    assert any("/tts" in path for path in paths)
-    assert any("/video" in path for path in paths)
+    paths = sorted({getattr(route, "path", "") for route in app.routes})
+    assert any("/health" in path for path in paths), f"app={app.__module__} routes={paths}"
+    assert any("/tts" in path for path in paths), f"routes={paths}"
+    assert any("/video" in path for path in paths), f"routes={paths}"
