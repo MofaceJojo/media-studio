@@ -89,11 +89,26 @@ def get_preset(name: str) -> Dict[str, Any]:
 def find_preset_by_base_url_and_model(base_url: str, model: str) -> str | None:
     """
     Find preset name by base_url and model
-    
+
     Returns:
         Preset name if found, None otherwise
     """
     for preset in LLM_PRESETS:
         if preset["base_url"] == base_url and preset["model"] == model:
+            return preset["name"]
+    return None
+
+
+def find_preset_by_base_url(base_url: str) -> str | None:
+    """Find the provider preset for a base_url, ignoring the model.
+
+    A saved config with a custom model (e.g. an OpenRouter :free model)
+    still belongs to that provider — the Settings form must keep showing
+    the provider preset and the saved credentials instead of falling back
+    to "Custom" and orphaning them.
+    """
+    normalized = (base_url or "").rstrip("/")
+    for preset in LLM_PRESETS:
+        if preset["base_url"].rstrip("/") == normalized:
             return preset["name"]
     return None

@@ -94,6 +94,15 @@ def _get_local_services_config() -> dict:
 
 def render_advanced_settings():
     """Render system configuration (required) with 2-column layout"""
+    # Always reflect what's on disk: config.yaml may have been changed by
+    # another page, a script, or a previous session. Without this, the form
+    # shows boot-time values and save() writes that stale snapshot back —
+    # which looks to the user like "my settings won't save".
+    try:
+        config_manager.reload()
+    except Exception as exc:  # keep the page usable even if reload fails
+        st.warning(f"配置文件重新读取失败，页面可能显示旧值：{exc}")
+
     # Check if system is configured
     is_configured = config_manager.validate()
     
@@ -110,20 +119,29 @@ def render_advanced_settings():
                 st.markdown(f"**{tr('settings.llm.title')}**")
                 
                 # Quick preset selection
-                from morpheus_video_studio.llm_presets import get_preset_names, get_preset, find_preset_by_base_url_and_model
-                
+                from morpheus_video_studio.llm_presets import (
+                    get_preset_names,
+                    get_preset,
+                    find_preset_by_base_url_and_model,
+                    find_preset_by_base_url,
+                )
+
                 # Custom at the end
                 preset_names = get_preset_names() + ["Custom"]
-                
+
                 # Get current config
                 current_llm = config_manager.get_llm_config()
-                
-                # Auto-detect which preset matches current config
+
+                # Auto-detect which preset matches current config.
+                # A custom model on a known provider (e.g. an OpenRouter
+                # :free model) still counts as that provider, otherwise
+                # returning to this page drops to "Custom" and the saved
+                # credentials look lost.
                 current_preset = find_preset_by_base_url_and_model(
-                    current_llm["base_url"], 
+                    current_llm["base_url"],
                     current_llm["model"]
-                )
-                
+                ) or find_preset_by_base_url(current_llm["base_url"])
+
                 # Determine default index based on current config
                 if current_preset:
                     # Current config matches a preset
@@ -146,8 +164,13 @@ def render_advanced_settings():
                     preset_config = get_preset(selected_preset)
                     default_api_key = preset_config.get("default_api_key", "") if selected_preset != current_preset else ""
                     default_base_url = preset_config.get("base_url", "")
-                    default_model = preset_config.get("model", "")
-                    
+                    # Keep the saved (possibly custom) model when this preset
+                    # is the provider of the saved config
+                    if selected_preset == current_preset and current_llm["model"]:
+                        default_model = current_llm["model"]
+                    else:
+                        default_model = preset_config.get("model", "")
+
                     # Show API key URL if available
                     if preset_config.get("api_key_url"):
                         st.markdown(f"🔑 [{tr('settings.llm.get_api_key')}]({preset_config['api_key_url']})")
@@ -160,15 +183,21 @@ def render_advanced_settings():
                 st.markdown("---")
                 
                 # API Key (use unique key to force refresh when switching preset)
+                # The saved key stays usable when we're still on the same
+                # provider: preset matches, or both saved & selected are Custom.
+                saved_key_applies = (
+                    selected_preset == current_preset
+                    or (selected_preset == "Custom" and current_preset is None)
+                )
                 llm_api_key = _secret_input(
                     f"{tr('settings.llm.api_key')} *",
                     help_text=tr("settings.llm.api_key_help"),
-                    has_saved_value=bool(current_llm["api_key"].strip()) and selected_preset == current_preset,
+                    has_saved_value=bool(current_llm["api_key"].strip()) and saved_key_applies,
                     key=f"llm_api_key_input_{selected_preset}"
                 )
                 effective_llm_api_key = (
                     llm_api_key.strip()
-                    or (current_llm["api_key"].strip() if selected_preset == current_preset else "")
+                    or (current_llm["api_key"].strip() if saved_key_applies else "")
                     or default_api_key
                 )
                 
@@ -698,9 +727,8 @@ def render_advanced_settings():
             if st.button(tr("btn.save_config"), use_container_width=True, key="save_config_btn"):
                 try:
                     # Validate and save LLM configuration
-                    if not (effective_llm_api_key and llm_base_url and llm_model):
-                        st.warning(tr("status.llm_config_incomplete"))
-                    else:
+                    llm_saved = bool(effective_llm_api_key and llm_base_url and llm_model)
+                    if llm_saved:
                         config_manager.set_llm_config(effective_llm_api_key, llm_base_url, llm_model)
                     
                     # Save ComfyUI configuration (optional fields, always save what's provided)
@@ -744,8 +772,22 @@ def render_advanced_settings():
                     )
                     
                     config_manager.save()
-                    st.success(tr("status.config_saved"))
-                    safe_rerun()
+                    if llm_saved:
+                        st.success(tr("status.config_saved"))
+                    else:
+                        missing = [
+                            label for label, value in (
+                                ("API Key", effective_llm_api_key),
+                                ("Base URL", llm_base_url),
+                                ("模型名", llm_model),
+                            ) if not value
+                        ]
+                        st.error(
+                            f"⚠️ LLM 配置未保存：缺少 {'、'.join(missing)}。"
+                            "其余设置已保存。请补齐后再点一次保存。"
+                        )
+                    if llm_saved:
+                        safe_rerun()
                 except Exception as e:
                     st.error(f"{tr('status.save_failed')}: {str(e)}")
         
