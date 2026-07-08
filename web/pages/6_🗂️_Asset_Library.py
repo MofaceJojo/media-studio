@@ -70,7 +70,12 @@ def main():
         note="资产库只负责复用、预览和导出，不承担新生成逻辑。把这里当成你的成品与中间素材工作台。",
     )
 
-    audio_tab, video_tab = st.tabs(["🎙️ 声音资产", "🎬 视频资产"])
+    audio_tab, video_tab, restyle_tab = st.tabs(["🎙️ 声音资产", "🎬 视频资产", "🖌️ 风格化"])
+
+    with restyle_tab:
+        from web.components.restyle_workshop import render_restyle_workshop
+
+        render_restyle_workshop()
 
     with audio_tab:
         st.markdown("### 最近声音资产")
