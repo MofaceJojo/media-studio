@@ -426,16 +426,12 @@ class SegmentBuilderMixin:
                 fps=fps,
             )
 
-            # Add a gentle fade at scene edges so image segments feel less abrupt.
-            fade_time = min(0.35, max(audio_duration * 0.12, 0.15))
-            if audio_duration > fade_time * 2:
-                motion_stream = motion_stream.filter("fade", type="in", start_time=0, duration=fade_time)
-                motion_stream = motion_stream.filter(
-                    "fade",
-                    type="out",
-                    start_time=max(target_duration - fade_time, 0),
-                    duration=fade_time,
-                )
+            # NOTE: no per-segment edge fades. A trailing fade-to-black bakes a
+            # black frame into every segment's tail; the xfade concat then clones
+            # that black frame to pad the video to the narration length, so the
+            # last image vanishes while the final narration keeps playing. Scene
+            # edges are handled by the concat layer (crossfades between clips),
+            # not by darkening each clip.
 
             (
                 ffmpeg
