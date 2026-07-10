@@ -473,9 +473,10 @@ class AssetBasedPipeline(LinearVideoPipeline):
             min_narration_words=5,
             max_narration_words=50,
             video_fps=30,
-            tts_inference_mode="local",
+            tts_inference_mode=context.params.get("tts_inference_mode", "local"),
             voice_id=context.params.get("voice_id", "zh-CN-YunjianNeural"),
             tts_speed=context.params.get("tts_speed", 1.2),
+            tts_instruct=context.params.get("tts_instruct"),
             media_width=media_width,
             media_height=media_height,
             frame_template=template_name,
@@ -811,6 +812,8 @@ class AssetBasedPipeline(LinearVideoPipeline):
                 "source": ctx.request.get("source"),
                 "voice_id": ctx.request.get("voice_id"),
                 "tts_speed": ctx.request.get("tts_speed"),
+                "tts_inference_mode": ctx.request.get("tts_inference_mode"),
+                "tts_instruct": ctx.request.get("tts_instruct"),
             }
             
             metadata = {

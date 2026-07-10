@@ -28,6 +28,7 @@ from web.i18n import tr, get_language
 from web.components.tts_preferences import (
     get_local_tts_preferences,
     persist_local_tts_preferences,
+    render_tts_config,
 )
 from web.pipelines.base import PipelineUI, register_pipeline_ui
 from web.components.content_input import render_bgm_section
@@ -228,68 +229,18 @@ class AssetBasedPipelineUI(PipelineUI):
                 st.info(tr("asset_based.source.selfhost_hint"))
                 check_and_warn_selfhost_workflow("selfhost/analyse_image.json")
         
-        # TTS configuration
+        # TTS configuration (shared renderer: Edge local + OmniVoice)
         with st.container(border=True):
             st.markdown(f"**{tr('section.tts')}**")
-            
-            # Import voice configuration
-            from morpheus_video_studio.tts_voices import EDGE_TTS_VOICES, get_voice_display_name
-            
-            # Get saved voice from config
-            comfyui_config = config_manager.get_comfyui_config()
-            tts_config = comfyui_config.get("tts", {})
-            local_config = tts_config.get("local", {})
-            saved_voice, saved_speed = get_local_tts_preferences(
-                local_config.get("voice", "zh-CN-YunjianNeural"),
-                float(local_config.get("speed", 1.2)),
-            )
-            
-            # Build voice options with i18n
-            voice_options = []
-            voice_ids = []
-            default_voice_index = 0
-            
-            for idx, voice_config in enumerate(EDGE_TTS_VOICES):
-                voice_id = voice_config["id"]
-                display_name = get_voice_display_name(voice_id, tr, get_language())
-                voice_options.append(display_name)
-                voice_ids.append(voice_id)
-                
-                if voice_id == saved_voice:
-                    default_voice_index = idx
-            
-            # Two-column layout
-            voice_col, speed_col = st.columns([1, 1])
-            
-            with voice_col:
-                selected_voice_display = st.selectbox(
-                    tr("tts.voice_selector"),
-                    voice_options,
-                    index=default_voice_index,
-                    key="asset_tts_voice"
-                )
-                selected_voice_index = voice_options.index(selected_voice_display)
-                voice_id = voice_ids[selected_voice_index]
-            
-            with speed_col:
-                tts_speed = st.slider(
-                    tr("tts.speed"),
-                    min_value=0.5,
-                    max_value=2.0,
-                    value=saved_speed,
-                    step=0.1,
-                    format="%.1fx",
-                    key="asset_tts_speed"
-                )
-                st.caption(tr("tts.speed_label", speed=f"{tts_speed:.1f}"))
+            tts_params = render_tts_config(morpheus_video_studio, key_prefix="asset")
 
-            persist_local_tts_preferences(voice_id, tts_speed)
-        
         return {
             "duration": duration,
             "source": source,
-            "voice_id": voice_id,
-            "tts_speed": tts_speed
+            "voice_id": tts_params["voice_id"],
+            "tts_speed": tts_params["tts_speed"],
+            "tts_inference_mode": tts_params["tts_inference_mode"],
+            "tts_instruct": tts_params["tts_instruct"],
         }
     
     def _render_output_preview(self, morpheus_video_studio: Any, video_params: dict):
