@@ -128,7 +128,7 @@ def persist_omnivoice_tts_preferences(
     manager.save()
 
 
-def _fetch_omnivoice_voice_catalog(base_url: str) -> tuple[list[str], list[str]]:
+def fetch_omnivoice_voice_catalog(base_url: str) -> tuple[list[str], list[str]]:
     """Return (voice_ids, display_labels) from a running OmniVoice, or a
     small built-in fallback when it can't be reached."""
     voice_items: list[dict] = []
@@ -227,7 +227,7 @@ def render_tts_config(morpheus_video_studio, *, key_prefix: str) -> dict[str, An
     omni_ok, omni_status = check_omnivoice_health(base_url)
     (st.success if omni_ok else st.warning)(omni_status)
 
-    voice_ids, voice_labels = _fetch_omnivoice_voice_catalog(base_url)
+    voice_ids, voice_labels = fetch_omnivoice_voice_catalog(base_url)
     default_index = voice_ids.index(saved_voice) if saved_voice in voice_ids else 0
 
     voice_col, speed_col = st.columns([1, 1])

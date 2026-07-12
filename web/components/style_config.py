@@ -188,26 +188,8 @@ def render_style_config(morpheus_video_studio, tts_container=None):
                     else:
                         st.error(msg)
 
-            voice_items = []
-            if omni_ok:
-                try:
-                    import httpx
-                    with httpx.Client(timeout=2.5, trust_env=False) as client:
-                        voices_response = client.get(f"{omni_base_url}/v1/audio/voices")
-                        voices_response.raise_for_status()
-                        voice_items = voices_response.json().get("voices", [])
-                except Exception:
-                    voice_items = []
-
-            voice_ids = [item.get("voice_id") for item in voice_items if item.get("voice_id")]
-            voice_labels = [
-                f"{item.get('name') or item.get('voice_id')} ({item.get('voice_id')})"
-                for item in voice_items
-                if item.get("voice_id")
-            ]
-            if not voice_ids:
-                voice_ids = ["default", "alloy", "nova", "demo0001"]
-                voice_labels = ["Default", "Alloy", "Nova", "OmniVoice Demo"]
+            from web.components.tts_preferences import fetch_omnivoice_voice_catalog
+            voice_ids, voice_labels = fetch_omnivoice_voice_catalog(omni_base_url)
 
             default_voice_index = voice_ids.index(saved_voice) if saved_voice in voice_ids else 0
             voice_col, speed_col = st.columns([1, 1])
