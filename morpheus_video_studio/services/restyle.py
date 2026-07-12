@@ -332,11 +332,14 @@ def build_ai_restyle_graph(
                         "ipadapter": ["22", 0],
                         "image": ["20", 0],
                         "clip_vision": ["21", 0],
-                        "weight": reference_strength,
-                        "weight_type": "linear",
+                        # style transfer targets the style-carrying attention
+                        # blocks; linear at这个权重会被 vid2vid 的原片 latent
+                        # 和结构锁淹没(实测两种参考图输出色彩几乎相同)
+                        "weight": min(max(reference_strength * 1.5, 0.8), 1.1),
+                        "weight_type": "style transfer",
                         "combine_embeds": "concat",
                         "start_at": 0.0,
-                        "end_at": 0.9,
+                        "end_at": 1.0,
                         "embeds_scaling": "V only",
                     },
                     "_meta": {"title": "Reference-guided repaint (Krea2-edit spirit)"},
@@ -345,6 +348,10 @@ def build_ai_restyle_graph(
         )
         # AnimateDiff consumes the reference-patched model instead of raw LoRA
         graph["5"]["inputs"]["model"] = ["23", 0]
+        # Loosen the structure lock so the reference style has room to act:
+        # keep composition, free the palette.
+        graph["10"]["inputs"]["strength"] = min(controlnet_strength, 0.55)
+        graph["10"]["inputs"]["end_percent"] = 0.7
 
     return graph
 

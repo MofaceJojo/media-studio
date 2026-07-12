@@ -97,7 +97,11 @@ def test_ai_graph_reference_image_branch(tmp_path: Path) -> None:
     )
     assert graph["20"]["inputs"]["image"] == "/tmp/ref.png"
     assert graph["23"]["class_type"] == "IPAdapterAdvanced"
-    assert graph["23"]["inputs"]["weight"] == 0.7
+    # weight 被放大以对抗 vid2vid 原片色彩 + 结构锁的稀释(实测 linear/原值无效)
+    assert abs(graph["23"]["inputs"]["weight"] - 1.05) < 1e-6
+    assert graph["23"]["inputs"]["weight_type"] == "style transfer"
+    # 参考图模式下结构锁必须放宽,给风格留空间
+    assert graph["10"]["inputs"]["strength"] <= 0.55
     # AnimateDiff 必须消费打过参考补丁的模型
     assert graph["5"]["inputs"]["model"] == ["23", 0]
     # 无参考图时不应有该支路,模型链保持原样
