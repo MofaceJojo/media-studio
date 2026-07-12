@@ -87,3 +87,20 @@ def test_ai_restyle_rejects_long_videos(tmp_path: Path) -> None:
     _make_video(source, duration=AI_RESTYLE_MAX_SECONDS + 5)
     with pytest.raises(ValueError, match="限"):
         run_ai_restyle(source, "style", tmp_path / "out.mp4")
+
+
+def test_ai_graph_reference_image_branch(tmp_path: Path) -> None:
+    """借鉴 Krea2-edit 的参考图引导：提供参考图时接入 IP-Adapter 支路。"""
+    graph = build_ai_restyle_graph(
+        "/tmp/in.mp4", "ghibli style", width=512, height=288,
+        reference_image="/tmp/ref.png", reference_strength=0.7,
+    )
+    assert graph["20"]["inputs"]["image"] == "/tmp/ref.png"
+    assert graph["23"]["class_type"] == "IPAdapterAdvanced"
+    assert graph["23"]["inputs"]["weight"] == 0.7
+    # AnimateDiff 必须消费打过参考补丁的模型
+    assert graph["5"]["inputs"]["model"] == ["23", 0]
+    # 无参考图时不应有该支路,模型链保持原样
+    plain = build_ai_restyle_graph("/tmp/in.mp4", "x", width=512, height=288)
+    assert "23" not in plain
+    assert plain["5"]["inputs"]["model"] == ["3", 0]

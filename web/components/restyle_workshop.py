@@ -92,6 +92,23 @@ def render_restyle_workshop() -> None:
             help="越高越像全新画面，越低越贴近原片。0.5-0.65 通常最稳。",
             key="restyle_denoise",
         )
+        reference_upload = st.file_uploader(
+            "风格参考图（可选）",
+            type=["jpg", "jpeg", "png", "webp"],
+            key="restyle_reference_image",
+            help="上传一张图作为风格锚点：重绘会跟随它的色调与画风（比纯文字风格更贴合）。不上传则只按上面选的风格预设走。",
+        )
+        if reference_upload is not None:
+            st.image(reference_upload, caption="参考图预览", width=220)
+            st.slider(
+                "参考图影响力",
+                min_value=0.2,
+                max_value=1.0,
+                value=0.6,
+                step=0.05,
+                help="越高越贴参考图的风格，过高可能压过画面内容，0.5-0.7 较稳。",
+                key="restyle_reference_strength",
+            )
         st.caption("⏱️ 预期速度：30 秒素材约 10 分钟，60 秒约 20 分钟。生成期间请不要关闭页面。")
 
     if not uploaded_files:
@@ -140,12 +157,23 @@ def render_restyle_workshop() -> None:
                             continue
                         preset = next(p for p in list_image_style_presets() if p["id"] == preset_id)
                         out = batch_dir / f"{source.stem}_{preset_id}.mp4"
+                        reference_path = None
+                        ref_upload = st.session_state.get("restyle_reference_image")
+                        if ref_upload is not None:
+                            ref_dir = _OUTPUT_DIR / "references"
+                            ref_dir.mkdir(parents=True, exist_ok=True)
+                            reference_path = ref_dir / f"ref_{int(time.time())}_{ref_upload.name}"
+                            reference_path.write_bytes(ref_upload.getbuffer())
                         results.append(
                             run_ai_restyle(
                                 source,
                                 preset["prompt_prefix"],
                                 out,
                                 denoise=float(st.session_state.get("restyle_denoise", 0.6)),
+                                reference_image=reference_path,
+                                reference_strength=float(
+                                    st.session_state.get("restyle_reference_strength", 0.6)
+                                ),
                                 progress_callback=lambda msg: status.info(msg),
                             )
                         )

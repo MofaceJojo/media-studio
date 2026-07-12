@@ -165,13 +165,20 @@ def build_ai_restyle_graph(
     controlnet_strength: float = 0.75,
     seed: int = 123456789,
     filename_prefix: str = "morpheus_restyle",
+    reference_image: str | None = None,
+    reference_strength: float = 0.6,
 ) -> dict[str, Any]:
-    """Build the ComfyUI vid2vid graph (dreamshaper + AD + Canny CN + LCM)."""
+    """Build the ComfyUI vid2vid graph (dreamshaper + AD + Lineart CN + LCM).
+
+    reference_image: optional style reference (借鉴 Krea2 edit 的参考图引导思路,
+    用 IP-Adapter 轻量落地) — every repainted frame follows the reference's
+    style/palette on top of the text prompt.
+    """
     negative = (
         "worst quality, low quality, blurry, text, watermark, logo, "
         "deformed, flicker, jpeg artifacts"
     )
-    return {
+    graph = {
         "1": {
             "class_type": "VHS_LoadVideoPath",
             "inputs": {
@@ -296,6 +303,51 @@ def build_ai_restyle_graph(
         },
     }
 
+    if reference_image:
+        graph.update(
+            {
+                "20": {
+                    "class_type": "VHS_LoadImagePath",
+                    "inputs": {
+                        "image": reference_image,
+                        "custom_width": 0,
+                        "custom_height": 0,
+                    },
+                    "_meta": {"title": "Style reference image"},
+                },
+                "21": {
+                    "class_type": "CLIPVisionLoader",
+                    "inputs": {"clip_name": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"},
+                    "_meta": {"title": "CLIP vision encoder"},
+                },
+                "22": {
+                    "class_type": "IPAdapterModelLoader",
+                    "inputs": {"ipadapter_file": "ip-adapter_sd15.safetensors"},
+                    "_meta": {"title": "IP-Adapter"},
+                },
+                "23": {
+                    "class_type": "IPAdapterAdvanced",
+                    "inputs": {
+                        "model": ["3", 0],
+                        "ipadapter": ["22", 0],
+                        "image": ["20", 0],
+                        "clip_vision": ["21", 0],
+                        "weight": reference_strength,
+                        "weight_type": "linear",
+                        "combine_embeds": "concat",
+                        "start_at": 0.0,
+                        "end_at": 0.9,
+                        "embeds_scaling": "V only",
+                    },
+                    "_meta": {"title": "Reference-guided repaint (Krea2-edit spirit)"},
+                },
+            }
+        )
+        # AnimateDiff consumes the reference-patched model instead of raw LoRA
+        graph["5"]["inputs"]["model"] = ["23", 0]
+
+    return graph
+
 
 def working_size(width: int, height: int, max_dim: int = AI_RESTYLE_MAX_DIM) -> tuple[int, int]:
     """Scale to max_dim on the long side, both dimensions divisible by 8."""
@@ -318,11 +370,19 @@ def run_ai_restyle(
     seed: Optional[int] = None,
     timeout_seconds: float = 3600.0,
     progress_callback: Optional[Callable[[str], None]] = None,
+    reference_image: str | Path | None = None,
+    reference_strength: float = 0.6,
 ) -> str:
     """Repaint a video clip into a new style. Fast-path rules enforced here."""
     source = Path(video_path)
     if not source.exists():
         raise FileNotFoundError(source)
+    reference_path: Optional[str] = None
+    if reference_image:
+        ref = Path(reference_image)
+        if not ref.exists():
+            raise FileNotFoundError(ref)
+        reference_path = str(ref.resolve())
 
     info = probe_video(source)
     if info["duration"] > AI_RESTYLE_MAX_SECONDS + 0.5:
@@ -341,6 +401,8 @@ def run_ai_restyle(
         denoise=denoise,
         seed=seed if seed is not None else int(time.time()) % 2**31,
         filename_prefix=prefix,
+        reference_image=reference_path,
+        reference_strength=reference_strength,
     )
 
     def report(message: str) -> None:
