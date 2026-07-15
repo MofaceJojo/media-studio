@@ -147,7 +147,6 @@ def main():
                 "video_mix",
                 "video_merge",
                 "action_transfer",
-                "seedance_script",
             ],
             horizontal=True,
             label_visibility="collapsed",
@@ -158,7 +157,6 @@ def main():
                 "video_mix": "🎬 视频混剪",
                 "video_merge": "🧩 合并视频",
                 "action_transfer": "💃 动作迁移",
-                "seedance_script": "🎭 Seedance 脚本",
             }[value],
         )
         _render_pipeline(advanced_section, morpheus_video_studio)

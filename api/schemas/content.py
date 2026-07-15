@@ -77,53 +77,6 @@ class ImagePromptGenerateResponse(BaseModel):
     image_prompts: List[str] = Field(..., description="Generated image prompts")
 
 
-# ============================================================================
-# Seedance Script Generation
-# ============================================================================
-
-class SeedanceAssetReference(BaseModel):
-    """Seedance multimodal asset reference"""
-    type: str = Field("image", description="Asset type: image, video, or audio")
-    label: str = Field(..., description="Human-readable asset label or path")
-    role: str = Field("reference material", description="Intended role in Seedance prompt")
-    reference: Optional[str] = Field(None, description="Optional explicit @ reference")
-
-
-class SeedanceScriptGenerateRequest(BaseModel):
-    """Seedance script generation request"""
-    brief: str = Field(..., description="Creative brief or source concept")
-    duration_seconds: int = Field(10, ge=4, le=15, description="Seedance video duration")
-    assets: List[SeedanceAssetReference] = Field(default_factory=list, description="Optional assets")
-    language: str = Field("auto", description="Output language hint")
-    scenario: str = Field("general", description="Scenario hint")
-    aspect_ratio: str = Field("9:16", description="Target aspect ratio")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "brief": "为一款冷萃咖啡生成 10 秒竖屏广告",
-                "duration_seconds": 10,
-                "assets": [
-                    {"type": "image", "label": "coffee bottle hero image", "role": "product appearance"}
-                ],
-                "language": "zh",
-                "scenario": "ecommerce_ad",
-                "aspect_ratio": "9:16",
-            }
-        }
-
-
-class SeedanceScriptGenerateResponse(BaseModel):
-    """Seedance script generation response"""
-    success: bool = True
-    message: str = "Success"
-    script: dict = Field(..., description="Generated Seedance-ready script payload")
-
-
-# ============================================================================
-# Title Generation
-# ============================================================================
-
 class TitleGenerateRequest(BaseModel):
     """Title generation request"""
     text: str = Field(..., description="Source text")

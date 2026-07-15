@@ -717,60 +717,6 @@ async def generate_video_prompts(
     return all_prompts
 
 
-async def generate_seedance_script(
-    llm_service,
-    brief: str,
-    duration_seconds: int = 10,
-    assets: list[dict[str, str]] | None = None,
-    language: str = "auto",
-    scenario: str = "general",
-    aspect_ratio: str = "9:16",
-) -> dict:
-    """
-    Generate a Jimeng Seedance 2.0-ready video script.
-
-    Args:
-        llm_service: LLM service instance
-        brief: Creative brief or source concept
-        duration_seconds: Seedance output duration, clamped to 4-15 seconds
-        assets: Optional multimodal references with type/label/role
-        language: Output language hint or "auto"
-        scenario: Scenario hint such as ad, short_drama, education, mv
-        aspect_ratio: Target aspect ratio hint
-
-    Returns:
-        Dict with summary, scenes, asset_plan, seedance_prompt, and notes.
-    """
-    from morpheus_video_studio.prompts.seedance_script import (
-        build_seedance_script_prompt,
-        normalize_seedance_script_result,
-    )
-
-    prompt = build_seedance_script_prompt(
-        brief=brief,
-        duration_seconds=duration_seconds,
-        assets=assets,
-        language=language,
-        scenario=scenario,
-        aspect_ratio=aspect_ratio,
-    )
-
-    logger.info(f"Generating Seedance script ({duration_seconds}s, scenario={scenario})")
-    response = await llm_service(
-        prompt=prompt,
-        temperature=0.75,
-        max_tokens=4000,
-    )
-    if response is None:
-        raise RuntimeError("LLM returned an empty response while generating Seedance script")
-
-    result = _parse_json(response)
-    script = normalize_seedance_script_result(result)
-    if not script["seedance_prompt"]:
-        raise ValueError("Invalid response format: missing 'seedance_prompt'")
-    return script
-
-
 def _parse_json(text: str) -> dict:
     """
     Parse JSON from text, with fallback to extract JSON from markdown code blocks
@@ -800,7 +746,7 @@ def _parse_json(text: str) -> dict:
             pass
     
     # Try to find any JSON object in the text
-    json_pattern = r'\{[^{}]*(?:"narrations"|"image_prompts"|"video_prompts"|"seedance_prompt"|"scenes")\s*:[\s\S]*\}'
+    json_pattern = r'\{[^{}]*(?:"narrations"|"image_prompts"|"video_prompts"|"scenes")\s*:[\s\S]*\}'
     match = re.search(json_pattern, text, re.DOTALL)
     if match:
         try:

@@ -25,15 +25,12 @@ from api.schemas.content import (
     NarrationGenerateResponse,
     ImagePromptGenerateRequest,
     ImagePromptGenerateResponse,
-    SeedanceScriptGenerateRequest,
-    SeedanceScriptGenerateResponse,
     TitleGenerateRequest,
     TitleGenerateResponse,
 )
 from morpheus_video_studio.utils.content_generators import (
     generate_narrations_from_topic,
     generate_image_prompts,
-    generate_seedance_script,
     generate_title,
 )
 
@@ -111,34 +108,6 @@ async def generate_image_prompt(
         
     except Exception as e:
         logger.error(f"Image prompt generation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/seedance-script", response_model=SeedanceScriptGenerateResponse)
-async def generate_seedance_script_endpoint(
-    request: SeedanceScriptGenerateRequest,
-    morpheus_video_studio: MorpheusVideoStudioDep
-):
-    """
-    Generate a Jimeng Seedance 2.0-ready video script.
-
-    The response includes a paste-ready Seedance prompt, time-segmented scenes,
-    an asset role plan, and practical operator notes.
-    """
-    try:
-        logger.info("Generating Seedance script")
-        script = await generate_seedance_script(
-            llm_service=morpheus_video_studio.llm,
-            brief=request.brief,
-            duration_seconds=request.duration_seconds,
-            assets=[asset.model_dump(exclude_none=True) for asset in request.assets],
-            language=request.language,
-            scenario=request.scenario,
-            aspect_ratio=request.aspect_ratio,
-        )
-        return SeedanceScriptGenerateResponse(script=script)
-    except Exception as e:
-        logger.error(f"Seedance script generation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
