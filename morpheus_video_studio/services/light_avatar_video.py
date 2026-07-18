@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 import tempfile
 import textwrap
-import wave
 from pathlib import Path
 
 import ffmpeg
@@ -33,11 +32,6 @@ class LightAvatarVideoService:
         narration_text: str,
         output_path: str,
         title: str = "",
-        enable_mouth_animation: bool = True,
-        mouth_center_x: float = 0.50,
-        mouth_center_y: float = 0.74,
-        mouth_width: float = 0.18,
-        mouth_height: float = 0.08,
     ) -> str:
         logger.info("Creating lightweight avatar video")
 
@@ -49,7 +43,6 @@ class LightAvatarVideoService:
             raise RuntimeError("Audio duration is invalid for avatar video generation.")
 
         total_frames = max(1, math.ceil(audio_duration * self.FPS))
-        levels = self._extract_audio_levels(audio_path, total_frames)
         wrapped_caption = self._wrap_caption(narration_text)
         character = self._prepare_character_image(character_image)
         font_title = self._load_font(52)
@@ -68,12 +61,6 @@ class LightAvatarVideoService:
                     font_title=font_title,
                     font_caption=font_caption,
                     t=t,
-                    mouth_open=levels[frame_index] if frame_index < len(levels) else 0.0,
-                    enable_mouth_animation=enable_mouth_animation,
-                    mouth_center_x=mouth_center_x,
-                    mouth_center_y=mouth_center_y,
-                    mouth_width=mouth_width,
-                    mouth_height=mouth_height,
                 )
                 frame.save(frame_dir / f"{frame_index:04d}.png", format="PNG")
 
@@ -91,64 +78,6 @@ class LightAvatarVideoService:
         probe = ffmpeg.probe(audio_path)
         return float(probe["format"]["duration"])
 
-    def _extract_audio_levels(self, audio_path: str, total_frames: int) -> list[float]:
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav_file:
-            temp_wav = Path(temp_wav_file.name)
-
-        try:
-            (
-                ffmpeg
-                .input(audio_path)
-                .output(
-                    str(temp_wav),
-                    ac=1,
-                    ar=16000,
-                    format="wav",
-                    acodec="pcm_s16le",
-                )
-                .overwrite_output()
-                .run(capture_stdout=True, capture_stderr=True)
-            )
-
-            with wave.open(str(temp_wav), "rb") as wav_file:
-                n_samples = wav_file.getnframes()
-                raw = wav_file.readframes(n_samples)
-
-            if not raw:
-                return [0.0] * total_frames
-
-            sample_width = 2
-            samples = [
-                int.from_bytes(raw[i:i + sample_width], byteorder="little", signed=True)
-                for i in range(0, len(raw), sample_width)
-            ]
-            chunk_size = max(1, math.ceil(len(samples) / total_frames))
-            levels = []
-            for start in range(0, len(samples), chunk_size):
-                chunk = samples[start:start + chunk_size]
-                if not chunk:
-                    levels.append(0.0)
-                    continue
-                rms = math.sqrt(sum(sample * sample for sample in chunk) / len(chunk)) / 32768.0
-                levels.append(rms)
-
-            levels = (levels + [0.0] * total_frames)[:total_frames]
-            smoothed = []
-            for idx in range(total_frames):
-                window = levels[max(0, idx - 1):min(total_frames, idx + 2)]
-                smoothed.append(sum(window) / len(window))
-
-            reference = sorted(smoothed)[max(0, int(len(smoothed) * 0.92) - 1)] if smoothed else 0.0
-            reference = max(reference, 0.08)
-            normalized = []
-            for level in smoothed:
-                if level < 0.02:
-                    normalized.append(0.0)
-                    continue
-                normalized.append(min(1.0, max(0.0, (level - 0.02) / reference)))
-            return normalized
-        finally:
-            temp_wav.unlink(missing_ok=True)
 
     def _prepare_character_image(self, image_path: str) -> Image.Image:
         image = Image.open(image_path).convert("RGBA")
@@ -166,31 +95,15 @@ class LightAvatarVideoService:
         font_title: ImageFont.FreeTypeFont | ImageFont.ImageFont,
         font_caption: ImageFont.FreeTypeFont | ImageFont.ImageFont,
         t: float,
-        mouth_open: float,
-        enable_mouth_animation: bool,
-        mouth_center_x: float,
-        mouth_center_y: float,
-        mouth_width: float,
-        mouth_height: float,
     ) -> Image.Image:
         canvas = self._build_background(character)
         draw = ImageDraw.Draw(canvas, "RGBA")
 
         char_layer, char_box = self._place_character(character, t)
-        if enable_mouth_animation:
-            self._apply_mouth_animation(
-                char_layer,
-                mouth_open=mouth_open,
-                mouth_center_x=mouth_center_x,
-                mouth_center_y=mouth_center_y,
-                mouth_width=mouth_width,
-                mouth_height=mouth_height,
-            )
         canvas.alpha_composite(char_layer, char_box[:2])
 
         self._draw_title(draw, title, font_title)
         self._draw_caption(draw, caption, font_caption)
-        self._draw_speaking_glow(draw, char_box, mouth_open)
         return canvas.convert("RGB")
 
     def _build_background(self, character: Image.Image) -> Image.Image:
@@ -241,59 +154,6 @@ class LightAvatarVideoService:
         top = int(self.CANVAS_SIZE[1] * 0.18) + drift_y
         return layer, (left, top, left + layer.width, top + layer.height)
 
-    def _apply_mouth_animation(
-        self,
-        character_layer: Image.Image,
-        *,
-        mouth_open: float,
-        mouth_center_x: float,
-        mouth_center_y: float,
-        mouth_width: float,
-        mouth_height: float,
-    ) -> None:
-        if mouth_open <= 0.02:
-            return
-
-        image_w, image_h = character_layer.size
-        center_x = int(image_w * mouth_center_x)
-        center_y = int(image_h * mouth_center_y)
-        base_w = max(12, int(image_w * mouth_width))
-        base_h = max(8, int(image_h * mouth_height))
-        box = (
-            max(0, center_x - base_w // 2),
-            max(0, center_y - base_h // 2),
-            min(image_w, center_x + base_w // 2),
-            min(image_h, center_y + base_h // 2),
-        )
-        if box[2] <= box[0] or box[3] <= box[1]:
-            return
-
-        mouth = character_layer.crop(box)
-        target_w = max(6, int(mouth.width * (1.0 - 0.06 * mouth_open)))
-        target_h = max(6, int(mouth.height * (1.0 + 0.70 * mouth_open)))
-        transformed = mouth.resize((target_w, target_h), Image.Resampling.LANCZOS)
-
-        aperture = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
-        aperture_draw = ImageDraw.Draw(aperture, "RGBA")
-        aperture_draw.ellipse(
-            (
-                int(target_w * 0.10),
-                int(target_h * (0.36 - 0.10 * mouth_open)),
-                int(target_w * 0.90),
-                int(target_h * 0.92),
-            ),
-            fill=(22, 5, 10, int(120 * mouth_open)),
-        )
-        transformed = Image.alpha_composite(aperture, transformed)
-
-        mask = Image.new("L", transformed.size, 0)
-        mask_draw = ImageDraw.Draw(mask)
-        mask_draw.rounded_rectangle((0, 0, transformed.width, transformed.height), radius=max(4, transformed.height // 3), fill=210)
-        mask = mask.filter(ImageFilter.GaussianBlur(radius=4))
-
-        paste_x = center_x - transformed.width // 2
-        paste_y = center_y - transformed.height // 2
-        character_layer.paste(transformed, (paste_x, paste_y), mask)
 
     def _draw_title(
         self,
@@ -333,30 +193,6 @@ class LightAvatarVideoService:
             stroke_fill=(0, 0, 0, 220),
         )
 
-    def _draw_speaking_glow(
-        self,
-        draw: ImageDraw.ImageDraw,
-        char_box: tuple[int, int, int, int],
-        mouth_open: float,
-    ) -> None:
-        if mouth_open <= 0.08:
-            return
-
-        glow_w = 156
-        glow_h = 40
-        center_x = self.CANVAS_SIZE[0] // 2
-        center_y = min(self.CANVAS_SIZE[1] - 448, char_box[3] + 10)
-        alpha = int(70 + 90 * mouth_open)
-        draw.rounded_rectangle(
-            (
-                center_x - glow_w // 2,
-                center_y - glow_h // 2,
-                center_x + glow_w // 2,
-                center_y + glow_h // 2,
-            ),
-            radius=20,
-            fill=(112, 182, 255, alpha),
-        )
 
     def _encode_video(
         self,

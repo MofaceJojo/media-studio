@@ -434,28 +434,12 @@ class DigitalHumanPipelineUI(PipelineUI):
                 key="light_avatar_script",
             )
 
-            enable_mouth_animation = st.checkbox(
-                "开启简单张嘴效果",
-                value=True,
-                key="light_avatar_enable_mouth",
-                help="不是精准对口型，而是根据声音强弱做一个轻量开合效果。",
-            )
-            with st.expander("高级微调", expanded=False):
-                st.caption("如果角色嘴巴位置不准，再调下面这四个参数。大多数情况下默认即可。")
-                mouth_center_x = st.slider("嘴巴中心 X", 0.20, 0.80, 0.50, 0.01, key="light_avatar_mouth_x")
-                mouth_center_y = st.slider("嘴巴中心 Y", 0.40, 0.92, 0.74, 0.01, key="light_avatar_mouth_y")
-                mouth_width = st.slider("嘴巴宽度", 0.06, 0.35, 0.18, 0.01, key="light_avatar_mouth_w")
-                mouth_height = st.slider("嘴巴高度", 0.03, 0.18, 0.08, 0.01, key="light_avatar_mouth_h")
+            st.caption("播客式口播：静态形象 + 轻微呼吸感 + 大字幕，观感像播客剪辑，不做假唇形。")
 
             return {
                 "mode": "light_avatar",
                 "goods_title": avatar_title,
                 "goods_text": avatar_script,
-                "enable_mouth_animation": enable_mouth_animation,
-                "mouth_center_x": mouth_center_x,
-                "mouth_center_y": mouth_center_y,
-                "mouth_width": mouth_width,
-                "mouth_height": mouth_height,
             }
 
     def _apply_selected_content_defaults(self) -> None:
@@ -661,11 +645,6 @@ class DigitalHumanPipelineUI(PipelineUI):
                                 narration_text=goods_text,
                                 output_path=final_video_path,
                                 title=goods_title,
-                                enable_mouth_animation=bool(video_params.get("enable_mouth_animation", True)),
-                                mouth_center_x=float(video_params.get("mouth_center_x", 0.50)),
-                                mouth_center_y=float(video_params.get("mouth_center_y", 0.74)),
-                                mouth_width=float(video_params.get("mouth_width", 0.18)),
-                                mouth_height=float(video_params.get("mouth_height", 0.08)),
                             )
                             duration_seconds = float(
                                 ffmpeg.probe(final_video_path)["format"]["duration"]
