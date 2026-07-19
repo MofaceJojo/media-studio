@@ -73,7 +73,20 @@ async def generate_title(
     
     # Remove trailing punctuation
     title = title.rstrip('.,!?;:\'"')
-    
+
+    # Language guard: free LLMs sometimes ignore the "match the input
+    # language" instruction and return an English title for Chinese content
+    # (the "We need to" bug). If the content is Chinese but the title has no
+    # Chinese at all, the title is wrong — fall back to the content itself.
+    def _has_cjk(text: str) -> bool:
+        return any('一' <= ch <= '鿿' for ch in text)
+
+    if _has_cjk(content) and not _has_cjk(title):
+        fallback = content.strip().split("\n")[0].strip()
+        title = fallback[:max_length].rstrip('.,!?;:\'"，。！？、')
+        logger.warning(f"Title language mismatch, fell back to content: '{title}'")
+        return title
+
     # Safety: if still over limit, truncate smartly
     if len(title) > max_length:
         # Try to truncate at word boundary
