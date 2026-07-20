@@ -43,6 +43,7 @@ class BgmMixin:
         loop: bool = True,
         fade_in: float = 0.0,
         fade_out: float = 0.0,
+        duck: bool = True,
     ) -> str:
         """
         Add background music to video
@@ -85,20 +86,35 @@ class BgmMixin:
             # Apply fade effects if specified
             if fade_in > 0:
                 bgm_audio = bgm_audio.filter('afade', type='in', duration=fade_in)
-            # Note: fade_out at the end requires knowing the duration, which is complex
-            # For now, we skip fade_out in this implementation
-            # A more advanced implementation would need to:
-            # 1. Get video duration
-            # 2. Calculate fade_out start time
-            # 3. Apply fade filter with specific start_time
-            
-            # Mix original audio with BGM
-            mixed_audio = ffmpeg.filter(
-                [input_video.audio, bgm_audio],
-                'amix',
-                inputs=2,
-                duration='first'  # Use video's duration
-            )
+
+            if duck:
+                # Auto-ducking: narration triggers a compressor on the BGM, so
+                # music dips while someone speaks and swells back in the gaps.
+                # sidechaincompress silently no-ops if its two inputs differ in
+                # sample format/rate/layout, so normalize both first.
+                def _norm(stream):
+                    return stream.filter(
+                        'aformat', sample_fmts='fltp', sample_rates=44100,
+                        channel_layouts='stereo',
+                    )
+                # Split the narration — one copy is the sidechain trigger, the
+                # other stays in the final mix.
+                narration = _norm(input_video.audio).filter_multi_output('asplit', 2)
+                ducked_bgm = ffmpeg.filter(
+                    [_norm(bgm_audio), narration[1]],
+                    'sidechaincompress',
+                    threshold=0.03, ratio=12, attack=20, release=350,
+                )
+                mixed_audio = ffmpeg.filter(
+                    [narration[0], ducked_bgm],
+                    'amix', inputs=2, duration='first', normalize=0,
+                )
+            else:
+                # Flat mix (legacy): constant BGM volume under narration.
+                mixed_audio = ffmpeg.filter(
+                    [input_video.audio, bgm_audio],
+                    'amix', inputs=2, duration='first',
+                )
             
             (
                 ffmpeg
