@@ -21,6 +21,7 @@ Key Feature:
 """
 
 import asyncio
+import os
 from pathlib import Path
 from typing import Callable, Optional
 from urllib.parse import parse_qs, unquote, urlparse
@@ -76,9 +77,22 @@ class FrameProcessor:
             Processed frame with all paths filled
         """
         logger.info(f"Processing frame {frame.index}...")
-        
+
         frame_num = frame.index + 1
-        
+
+        # Resume: if a previous run already produced this frame's segment (same
+        # task dir), reuse it and skip all 4 steps. Makes frames idempotent, so
+        # a crashed/killed generation re-run only regenerates the missing tail.
+        from morpheus_video_studio.utils.os_util import get_task_frame_path
+        existing_segment = get_task_frame_path(config.task_id, frame.index, "segment")
+        if os.path.exists(existing_segment):
+            existing_duration = await self._get_video_duration(existing_segment, fallback=0.0)
+            if existing_duration > 0:
+                frame.video_segment_path = existing_segment
+                frame.duration = existing_duration
+                logger.info(f"⏩ Frame {frame.index} reused from previous run ({existing_duration:.2f}s)")
+                return frame
+
         # Determine if this frame needs image generation
         # If image_path or video_path is already set (e.g. asset-based pipeline), we consider it "has existing media" but skip generation
         has_existing_media = frame.image_path is not None or frame.video_path is not None
@@ -527,7 +541,6 @@ class FrameProcessor:
             )
             
             # Clean up temp file
-            import os
             if os.path.exists(temp_video_with_overlay):
                 os.unlink(temp_video_with_overlay)
             if should_stabilize_generated_video:
@@ -589,7 +602,6 @@ class FrameProcessor:
         except Exception as e:
             logger.warning(f"Failed to get audio duration: {e}, using estimate")
             # Fallback: estimate based on file size (very rough)
-            import os
             file_size = os.path.getsize(audio_path)
             # Assume ~16kbps for MP3, so 2KB per second
             estimated_duration = file_size / 2000

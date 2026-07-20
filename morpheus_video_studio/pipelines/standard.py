@@ -86,12 +86,31 @@ class StandardPipeline(LinearVideoPipeline):
         
         logger.info(f"🚀 Starting StandardPipeline in '{mode}' mode")
         logger.info(f"   Text length: {len(text)} chars")
-        
+
+        # Resume: reuse a prior interrupted task's dir and reload its storyboard,
+        # so already-finished frame segments are kept and only the missing tail
+        # is regenerated (frame_processor skips frames whose segment exists).
+        resume_task_id = ctx.params.get("resume_task_id")
+        if resume_task_id:
+            storyboard = await self.core.persistence.load_storyboard(resume_task_id)
+            if storyboard is not None:
+                ctx.task_id = resume_task_id
+                ctx.task_dir = str(Path(get_task_final_video_path(resume_task_id)).parent)
+                ctx.storyboard = storyboard
+                ctx.config = storyboard.config
+                ctx.narrations = [f.narration for f in storyboard.frames]
+                ctx.title = storyboard.title
+                ctx.resumed = True
+                ctx.final_video_path = get_task_final_video_path(resume_task_id)
+                logger.info(f"⏪ Resuming task {resume_task_id} ({len(storyboard.frames)} frames)")
+                return
+            logger.warning(f"Resume requested but storyboard {resume_task_id} not found; starting fresh")
+
         # Create isolated task directory
         task_dir, task_id = create_task_output_dir()
         ctx.task_id = task_id
         ctx.task_dir = task_dir
-        
+
         logger.info(f"📁 Task directory created: {task_dir}")
         logger.info(f"   Task ID: {task_id}")
         
@@ -109,6 +128,8 @@ class StandardPipeline(LinearVideoPipeline):
 
     async def generate_content(self, ctx: PipelineContext):
         """Step 2: Generate or process script/narrations."""
+        if ctx.resumed:
+            return
         mode = ctx.params.get("mode", "generate")
         text = ctx.input_text
         n_scenes = ctx.params.get("n_scenes", 5)
@@ -150,6 +171,8 @@ class StandardPipeline(LinearVideoPipeline):
 
     async def determine_title(self, ctx: PipelineContext):
         """Step 3: Determine or generate video title."""
+        if ctx.resumed:
+            return
         # Note: Swapped order with generate_content in base class call, 
         # but in StandardPipeline original code, title was determined BEFORE narrations.
         # However, LinearVideoPipeline defines generate_content BEFORE determine_title.
@@ -176,6 +199,8 @@ class StandardPipeline(LinearVideoPipeline):
 
     async def plan_visuals(self, ctx: PipelineContext):
         """Step 4: Generate image prompts or visual descriptions."""
+        if ctx.resumed:
+            return
         media_workflow = ctx.params.get("media_workflow") or ""
         media_strategy = ctx.params.get("media_strategy", "")
 
@@ -282,6 +307,8 @@ class StandardPipeline(LinearVideoPipeline):
 
     async def initialize_storyboard(self, ctx: PipelineContext):
         """Step 5: Create Storyboard object and frames."""
+        if ctx.resumed:
+            return
         # === Handle TTS parameter compatibility ===
         tts_inference_mode = ctx.params.get("tts_inference_mode")
         tts_voice = ctx.params.get("tts_voice")
@@ -384,6 +411,13 @@ class StandardPipeline(LinearVideoPipeline):
                 created_at=datetime.now()
             )
             ctx.storyboard.frames.append(frame)
+
+        # Persist the storyboard before producing assets, so an interrupted run
+        # can be resumed (reload this storyboard, reuse finished frame segments).
+        try:
+            await self.core.persistence.save_storyboard(ctx.task_id, ctx.storyboard)
+        except Exception as exc:
+            logger.warning(f"Early storyboard persist failed (resume disabled for this run): {exc}")
 
     async def produce_assets(self, ctx: PipelineContext):
         """Step 6: Generate audio, images, and render frames (Core processing)."""

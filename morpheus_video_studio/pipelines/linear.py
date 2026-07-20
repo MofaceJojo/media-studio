@@ -57,6 +57,9 @@ class PipelineContext:
     # === Configuration & Storyboard ===
     config: Optional[StoryboardConfig] = None
     storyboard: Optional[Storyboard] = None
+
+    # === Resume ===
+    resumed: bool = False  # storyboard reloaded from a prior interrupted run
     
     # === Output ===
     final_video_path: Optional[str] = None
