@@ -168,13 +168,29 @@ class TTSService(ComfyBaseService):
                 output_path=output_path
             )
         if mode == "omnivoice":
-            return await self._call_omnivoice_tts(
-                text=text,
-                voice=voice,
-                speed=speed,
-                output_path=output_path,
-                **params
-            )
+            try:
+                return await self._call_omnivoice_tts(
+                    text=text,
+                    voice=voice,
+                    speed=speed,
+                    output_path=output_path,
+                    **params
+                )
+            except Exception as exc:
+                # OmniVoice is the flaky link (pseudo-ready hang, upstream 5xx).
+                # Its stuck state is detected and raised instantly, so instead of
+                # failing the whole render, degrade to Edge TTS for this segment
+                # and keep going. Edge ignores the OmniVoice voice/instruct, so
+                # fall back to the configured local voice.
+                logger.warning(
+                    f"OmniVoice TTS failed ({exc}); falling back to Edge TTS for this segment."
+                )
+                return await self._call_local_tts(
+                    text=text,
+                    voice=None,
+                    speed=speed,
+                    output_path=output_path,
+                )
         else:  # comfyui
             # 1. Resolve workflow (returns structured info)
             workflow_info = self._resolve_workflow(workflow=workflow)
