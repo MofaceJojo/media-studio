@@ -25,6 +25,13 @@ from __future__ import annotations
 from typing import Final
 
 
+VISUAL_NO_HUMAN = """## 画面硬性规则（优先级最高，与其它要求冲突时以此为准）
+- 严禁出现人物、人体、人脸、手部、人影。本地模型画人会严重变形，一律回避。
+- 只从以下题材取景：药材/食材特写（干鲜药材、切片、粉末、煎煮）、器物（药碾、戥秤、陶罐、药柜抽屉、瓷碗）、古籍书页与线装书、植物与山野药田、实验器皿与显微视角、静物摆拍构图。
+- 构图偏好：微距或近景静物、干净背景、柔和自然光、浅景深。
+- 不要写"医生""患者""老人""妇女""某人在做某事"等含人的描述；把动作改写成物的状态（例："医生煎药" → "陶罐在炉上煎煮，蒸汽升腾"）。"""
+
+
 _RECIPES: Final[list[dict[str, str]]] = [
     {
         "id": "general",
@@ -49,11 +56,12 @@ _RECIPES: Final[list[dict[str, str]]] = [
 - 禁止人生感悟、心灵鸡汤、情绪化抒情
 - 禁止空泛表述（如"非常神奇""大自然的奥秘"），每句都要有信息量
 - 不确定的内容宁可不写，禁止编造数据和文献""",
+        "visual": VISUAL_NO_HUMAN,
     },
     {
         "id": "tcm",
-        "label": "中药百科",
-        "description": "性味归经 + 功效（传统+现代）+ 用法搭配 + 禁忌与医嘱提示",
+        "label": "中药百科 / 古方新证",
+        "description": "传统记载 + 现代证据分级 + 用法边界 + 禁忌与医嘱提示（画面禁人物）",
         "block": """# 栏目配方：中药百科（当与上文风格要求冲突时，以本配方为准）
 本视频是中药知识科普。目标：讲清一味药材/方剂的来历、功效与边界。
 
@@ -64,10 +72,17 @@ _RECIPES: Final[list[dict[str, str]]] = [
 - 倒数第 2 镜：禁忌人群与注意事项（孕妇、体质、配伍禁忌等）
 - 最后 1 镜：必须以类似"以上内容仅供科普参考，具体用药请遵医嘱"的提示收尾
 
+证据分级（讲功效时必须区分，这是本栏目的立身之本）：
+- 有现代研究支持的，明说"现代研究发现/临床证实"，可举青蒿素、砒霜治白血病这类真实成果
+- 只有传统记载的，明说"《本草纲目》记载""古人认为"，不要冒充科学结论
+- 民间说法但已被证伪的，可以直接辟谣（辟谣本身就是好选题）
+
 硬性禁忌：
 - 不得夸大疗效，不得使用"根治""治愈""包好"等承诺性表述
 - 不得给出具体剂量或替代医嘱的用药指导
-- 引用典籍必须真实，禁止编造条文""",
+- 引用典籍必须真实，禁止编造条文
+- 不得暗示可替代正规治疗（尤其三高、糖尿病等慢病用药）""",
+        "visual": VISUAL_NO_HUMAN,
     },
     {
         "id": "ranking",
@@ -105,6 +120,7 @@ _RECIPES: Final[list[dict[str, str]]] = [
 - 不承诺疗效，不使用绝对化表述（"一定""必然治好"）
 - 不制造健康焦虑或恐慌，语气冷静专业
 - 引用研究必须真实，禁止编造""",
+        "visual": VISUAL_NO_HUMAN,
     },
 ]
 
@@ -118,6 +134,16 @@ def get_content_recipe(recipe_id: str) -> dict[str, str]:
         if recipe["id"] == recipe_id:
             return recipe.copy()
     raise KeyError(f"Unknown content recipe: {recipe_id}")
+
+
+def get_recipe_visual_rules(recipe_id: str | None) -> str:
+    """Return the画面规则 overlay for a recipe; empty when the recipe has none."""
+    if not recipe_id:
+        return ""
+    try:
+        return get_content_recipe(recipe_id).get("visual", "")
+    except KeyError:
+        return ""
 
 
 def get_recipe_block(recipe_id: str | None) -> str:

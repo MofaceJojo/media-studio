@@ -49,6 +49,7 @@ from morpheus_video_studio.utils.os_util import (
 )
 from morpheus_video_studio.utils.template_util import get_template_type
 from morpheus_video_studio.utils.prompt_helper import build_image_prompt
+from morpheus_video_studio.prompts.content_recipes import get_recipe_visual_rules
 from morpheus_video_studio.utils.video_qa import inspect_final_video
 from morpheus_video_studio.utils.subtitle_export import export_srt
 from morpheus_video_studio.services.video import VideoService
@@ -277,6 +278,7 @@ class StandardPipeline(LinearVideoPipeline):
                 else:
                     base_image_prompts = await generate_image_prompts(
                         self.llm,
+                        visual_rules=get_recipe_visual_rules(ctx.params.get("content_recipe")),
                         narrations=ctx.narrations,
                         min_words=min_words,
                         max_words=max_words,

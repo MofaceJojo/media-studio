@@ -538,10 +538,15 @@ async def generate_image_prompts(
     max_words: int = 60,
     batch_size: int = 10,
     max_retries: int = 3,
-    progress_callback: Optional[callable] = None
+    progress_callback: Optional[callable] = None,
+    visual_rules: str = ""
 ) -> List[str]:
     """
     Generate image prompts from narrations (with batching and retry)
+
+    visual_rules: optional per-recipe画面规则 (e.g. no human figures) prepended
+    to the LLM prompt — local SD1.5 mangles people, so knowledge channels steer
+    imagery to herbs/objects/texts instead.
     
     Args:
         llm_service: LLM service instance
@@ -576,7 +581,8 @@ async def generate_image_prompts(
                 prompt = build_image_prompt_prompt(
                     narrations=batch_narrations,
                     min_words=min_words,
-                    max_words=max_words
+                    max_words=max_words,
+                    visual_rules=visual_rules
                 )
                 
                 response = await llm_service(
