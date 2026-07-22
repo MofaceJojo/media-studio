@@ -25,6 +25,38 @@ from typing import List, Optional, Literal
 from loguru import logger
 
 
+# Human-referencing terms that make local SD1.5 render distorted people.
+# Used as a hard scrub on image prompts when a recipe forbids human figures —
+# the LLM instruction isn't always obeyed, so this is the last line of defence.
+_HUMAN_TERMS = re.compile(
+    r"\b(person|people|human|man|woman|men|women|male|female|boy|girl|child|children|"
+    r"elderly|old man|old woman|patient|doctor|physician|figure|portrait|hand|hands|"
+    r"face|faces|body|worker|farmer|practitioner|monk|scholar)\b",
+    re.IGNORECASE,
+)
+_HUMAN_TERMS_CN = re.compile(
+    r"人物|人体|人影|人脸|医生|大夫|患者|病人|老人|妇女|男人|女人|孩子|手部|双手|"
+    r"农民|药师|采药人|老中医|人[，。、]"
+)
+
+
+def scrub_human_terms(prompt: str) -> str:
+    """Strip human references from an image prompt (both EN and CN).
+
+    Belt-and-braces for the no-human recipes: even when the LLM leaks a person
+    into the prompt, this removes it before it reaches ComfyUI. Cleans up the
+    dangling punctuation/connectors left behind.
+    """
+    if not prompt:
+        return prompt
+    prompt = _HUMAN_TERMS_CN.sub("", prompt)
+    prompt = _HUMAN_TERMS.sub("", prompt)
+    prompt = re.sub(r"\b(a|an|the|of|with|and|by)\s+(,|\.|and|with)", r"\2", prompt, flags=re.IGNORECASE)
+    prompt = re.sub(r"\s*,\s*,+", ", ", prompt)
+    prompt = re.sub(r"\s{2,}", " ", prompt)
+    return prompt.strip(" ,，、").strip()
+
+
 def clean_narration(text: str) -> str:
     """Normalize one narration segment into a single spoken line.
 
@@ -659,6 +691,15 @@ async def generate_image_prompts(
                     raise
                 logger.info(f"Retrying batch {batch_idx}...")
     
+    # Hard scrub: when the recipe forbids people, remove any human reference the
+    # LLM leaked, so distorted figures can't reach ComfyUI even on a bad batch.
+    if "严禁出现人物" in (visual_rules or ""):
+        scrubbed = [scrub_human_terms(p) for p in all_prompts]
+        removed = sum(1 for a, b in zip(all_prompts, scrubbed) if a != b)
+        if removed:
+            logger.warning(f"Scrubbed human references from {removed}/{len(all_prompts)} image prompts")
+        all_prompts = scrubbed
+
     logger.info(f"✅ Generated {len(all_prompts)} image prompts")
     return all_prompts
 
