@@ -25,6 +25,23 @@ from typing import List, Optional, Literal
 from loguru import logger
 
 
+def clean_narration(text: str) -> str:
+    """Normalize one narration segment into a single spoken line.
+
+    A segment is one continuous sentence, so it must not carry line breaks.
+    Free LLMs leak two kinds that end up printed on the subtitle as the raw
+    characters '\\n': real newlines/tabs, and the literal backslash-n / -t / -r
+    sequences produced when a model double-escapes its JSON. Collapse both to
+    spaces and squeeze whitespace.
+    """
+    if not text:
+        return ""
+    text = re.sub(r"\\[nrt]", " ", text)      # literal backslash-n / -r / -t
+    text = re.sub(r"[\n\r\t]+", " ", text)     # real control chars
+    text = re.sub(r"\s{2,}", " ", text)
+    return text.strip()
+
+
 async def generate_title(
     llm_service,
     content: str,
@@ -157,8 +174,8 @@ async def generate_narrations_from_topic(
     if "narrations" not in result:
         raise ValueError("Invalid response format: missing 'narrations' key")
     
-    narrations = result["narrations"]
-    
+    narrations = [clean_narration(n) for n in result["narrations"]]
+
     # Validate count
     if len(narrations) > n_scenes:
         logger.warning(f"Got {len(narrations)} narrations, taking first {n_scenes}")
@@ -213,8 +230,8 @@ async def generate_narrations_from_content(
     if "narrations" not in result:
         raise ValueError("Invalid response format: missing 'narrations' key")
     
-    narrations = result["narrations"]
-    
+    narrations = [clean_narration(n) for n in result["narrations"]]
+
     # Validate count
     if len(narrations) > n_scenes:
         logger.warning(f"Got {len(narrations)} narrations, taking first {n_scenes}")
@@ -306,12 +323,16 @@ async def split_narration_script(
         # Fallback to line mode
         logger.warning(f"Unknown split_mode '{split_mode}', falling back to 'line'")
         narrations = _split_lines(cleaned_script)
-    
+
+    # Each segment is one spoken line — scrub any leftover literal \n / control
+    # chars so they never surface on the subtitle.
+    narrations = [clean_narration(n) for n in narrations if clean_narration(n)]
+
     # Log statistics
     if narrations:
         lengths = [len(s) for s in narrations]
         logger.info(f"   Min: {min(lengths)} chars, Max: {max(lengths)} chars, Avg: {sum(lengths)//len(lengths)} chars")
-    
+
     return narrations
 
 
