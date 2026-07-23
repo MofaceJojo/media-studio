@@ -10,6 +10,7 @@ llm:
   api_key: ""
   base_url: ""
   model: ""
+  timeout_seconds: 25
 
 # Popular presets:
 # Qwen Max:        base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"  model: "qwen-max"
@@ -47,6 +48,16 @@ comfyui:
     # Video prompt prefix (optional)
     prompt_prefix: "Minimalist black-and-white matchstick figure style illustration, clean lines, simple sketch style"
 
+# ==================== HyperFrame Configuration ====================
+# Optional local HyperFrames renderer for video-template media generation.
+# In the web UI, choose "HyperFrame Video" as the media strategy.
+hyperframe:
+  enabled: true
+  command: "node_modules/.bin/hyperframes"
+  quality: draft
+  fps: 30
+  timeout_seconds: 300
+
 # ==================== Template Configuration ====================
 # Configure default template for video generation
 template:
@@ -64,7 +75,7 @@ template:
   default_template: "1080x1920/image_default.html"
 
 # ==================== Stock Materials Configuration ====================
-# MoneyPrinter-style stock video material sources
+# Stock video material sources
 stock_materials:
   default_provider: all
   pexels_api_key: ""

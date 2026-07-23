@@ -16,8 +16,6 @@ Async helper functions for web UI
 
 import asyncio
 import sys
-import tomllib
-from pathlib import Path
 
 from loguru import logger
 
@@ -35,28 +33,10 @@ def run_async(coro):
             return loop.run_until_complete(coro)
         finally:
             try:
-                from pixelle_video.services.frame_html import HTMLFrameGenerator
+                from morpheus_video_studio.services.frame_html import HTMLFrameGenerator
 
                 loop.run_until_complete(HTMLFrameGenerator.close_browser())
             except Exception as e:
                 logger.debug(f"Failed to cleanup HTML frame browser before loop close: {e}")
             loop.close()
     return asyncio.run(coro)
-
-
-def get_project_version():
-    """Get project version from pyproject.toml"""
-    try:
-        # Get project root (web parent directory)
-        web_dir = Path(__file__).resolve().parent.parent
-        project_root = web_dir.parent
-        pyproject_path = project_root / "pyproject.toml"
-        
-        if pyproject_path.exists():
-            with open(pyproject_path, "rb") as f:
-                pyproject_data = tomllib.load(f)
-                return pyproject_data.get("project", {}).get("version", "Unknown")
-    except Exception as e:
-        logger.warning(f"Failed to read version from pyproject.toml: {e}")
-    return "Unknown"
-

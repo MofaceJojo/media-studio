@@ -1,6 +1,6 @@
 # Your First Video
 
-Step-by-step guide to creating your first video with Pixelle-Video.
+Step-by-step guide to creating your first video with Morpheus Video Studio.
 
 ---
 

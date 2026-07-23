@@ -21,22 +21,49 @@ import streamlit as st
 from loguru import logger
 
 from web.i18n import tr, get_language
+from web.components.style_preset_picker import (
+    get_default_image_style_preset,
+    render_image_style_preset_picker,
+)
+from web.components.tts_preferences import (
+    get_local_tts_preferences,
+    get_omnivoice_tts_preferences,
+    persist_local_tts_preferences,
+    persist_omnivoice_tts_preferences,
+)
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import check_and_warn_selfhost_workflow
-from pixelle_video.config import config_manager
-from pixelle_video.utils.omnivoice_util import (
+from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.utils.omnivoice_util import (
     check_omnivoice_health,
     format_omnivoice_error,
     normalize_omnivoice_instruct,
 )
-from pixelle_video.utils.comfyui_util import check_comfyui_health
+from morpheus_video_studio.utils.comfyui_util import check_comfyui_health
 
 
-def render_style_config(pixelle_video):
+def _get_hyperframe_config() -> dict:
+    """Read HyperFrame config with compatibility for already-running Streamlit sessions."""
+    if hasattr(config_manager, "get_hyperframe_config"):
+        return config_manager.get_hyperframe_config()
+
+    config_dict = config_manager.config.to_dict() if hasattr(config_manager.config, "to_dict") else {}
+    return {
+        "enabled": True,
+        "command": "npx --yes hyperframes",
+        "quality": "draft",
+        "fps": 30,
+        "timeout_seconds": 300,
+        **config_dict.get("hyperframe", {}),
+    }
+
+
+def render_style_config(morpheus_video_studio, tts_container=None):
     """Render style configuration section (middle column)"""
     # TTS Section (moved from left column)
     # ====================================================================
-    with st.container(border=True):
+    tts_section = tts_container.container(border=True) if tts_container else st.container(border=True)
+    with tts_section:
         st.markdown(f"**{tr('section.tts')}**")
         
         with st.expander(tr("help.feature_description"), expanded=False):
@@ -74,12 +101,14 @@ def render_style_config(pixelle_video):
         # ================================================================
         if tts_mode == "local":
             # Import voice configuration
-            from pixelle_video.tts_voices import EDGE_TTS_VOICES, get_voice_display_name
+            from morpheus_video_studio.tts_voices import EDGE_TTS_VOICES, get_voice_display_name
             
             # Get saved voice from config
             local_config = tts_config.get("local", {})
-            saved_voice = local_config.get("voice", "zh-CN-YunjianNeural")
-            saved_speed = local_config.get("speed", 1.2)
+            saved_voice, saved_speed = get_local_tts_preferences(
+                local_config.get("voice", "zh-CN-YunjianNeural"),
+                float(local_config.get("speed", 1.2)),
+            )
             
             # Build voice options with i18n
             voice_options = []
@@ -124,6 +153,8 @@ def render_style_config(pixelle_video):
                     key="tts_local_speed"
                 )
                 st.caption(tr("tts.speed_label", speed=f"{tts_speed:.1f}"))
+
+            persist_local_tts_preferences(selected_voice, tts_speed)
             
             # Variables for video generation
             tts_workflow_key = None
@@ -135,11 +166,12 @@ def render_style_config(pixelle_video):
         elif tts_mode == "omnivoice":
             omni_config = tts_config.get("omnivoice", {})
             omni_base_url = omni_config.get("base_url", "http://127.0.0.1:3900").rstrip("/")
-            saved_voice = omni_config.get("voice", "default")
-            saved_speed = omni_config.get("speed", 1.0)
-            saved_instruct = normalize_omnivoice_instruct(
-                omni_config.get("instruct")
-            ) or "男，青年"
+            saved_voice, saved_speed, _, saved_instruct = get_omnivoice_tts_preferences(
+                omni_config.get("voice", "default"),
+                float(omni_config.get("speed", 1.0)),
+                omni_config.get("model", "omnivoice"),
+                normalize_omnivoice_instruct(omni_config.get("instruct")) or "男，青年",
+            )
 
             omni_ok, omni_status = check_omnivoice_health(omni_base_url)
             if omni_ok:
@@ -156,26 +188,8 @@ def render_style_config(pixelle_video):
                     else:
                         st.error(msg)
 
-            voice_items = []
-            if omni_ok:
-                try:
-                    import httpx
-                    with httpx.Client(timeout=2.5, trust_env=False) as client:
-                        voices_response = client.get(f"{omni_base_url}/v1/audio/voices")
-                        voices_response.raise_for_status()
-                        voice_items = voices_response.json().get("voices", [])
-                except Exception:
-                    voice_items = []
-
-            voice_ids = [item.get("voice_id") for item in voice_items if item.get("voice_id")]
-            voice_labels = [
-                f"{item.get('name') or item.get('voice_id')} ({item.get('voice_id')})"
-                for item in voice_items
-                if item.get("voice_id")
-            ]
-            if not voice_ids:
-                voice_ids = ["default", "alloy", "nova", "demo0001"]
-                voice_labels = ["Default", "Alloy", "Nova", "OmniVoice Demo"]
+            from web.components.tts_preferences import fetch_omnivoice_voice_catalog
+            voice_ids, voice_labels = fetch_omnivoice_voice_catalog(omni_base_url)
 
             default_voice_index = voice_ids.index(saved_voice) if saved_voice in voice_ids else 0
             voice_col, speed_col = st.columns([1, 1])
@@ -206,6 +220,11 @@ def render_style_config(pixelle_video):
                 help="仅支持预设标签，例如：男，青年 / female, young adult。勿写长段英文或「深情」等自由描述。",
             )
             omnivoice_instruct = normalize_omnivoice_instruct(omnivoice_instruct) or "男，青年"
+            persist_omnivoice_tts_preferences(
+                selected_voice,
+                tts_speed,
+                instruct=omnivoice_instruct,
+            )
             tts_workflow_key = None
             ref_audio_path = None
         
@@ -214,7 +233,7 @@ def render_style_config(pixelle_video):
         # ================================================================
         else:  # comfyui mode
             # Get available TTS workflows
-            tts_workflows = pixelle_video.tts.list_workflows()
+            tts_workflows = morpheus_video_studio.tts.list_workflows()
             
             # Build options for selectbox
             tts_workflow_options = [wf["display_name"] for wf in tts_workflows]
@@ -303,7 +322,7 @@ def render_style_config(pixelle_video):
                             if ref_audio_path:
                                 tts_params["ref_audio"] = str(ref_audio_path)
                         
-                        audio_path = run_async(pixelle_video.tts(**tts_params))
+                        audio_path = run_async(morpheus_video_studio.tts(**tts_params))
                         
                         # Play the audio
                         if audio_path:
@@ -380,7 +399,7 @@ def render_style_config(pixelle_video):
         current_lang = get_language()
         
         # Import template utilities
-        from pixelle_video.utils.template_util import get_templates_grouped_by_size_and_type, get_template_type
+        from morpheus_video_studio.utils.template_util import get_templates_grouped_by_size_and_type, get_template_type
         
         # Template type selector
         st.markdown(f"**{tr('template.type_selector')}**")
@@ -425,7 +444,7 @@ def render_style_config(pixelle_video):
         }
         
         # Get default template from config
-        template_config = pixelle_video.config.get("template", {})
+        template_config = morpheus_video_studio.config.get("template", {})
         config_default_template = template_config.get("default_template", "1080x1920/image_default.html")
 
         # Backward compatibility
@@ -587,14 +606,14 @@ def render_style_config(pixelle_video):
         
 
         # Display video size from template
-        from pixelle_video.utils.template_util import parse_template_size
+        from morpheus_video_studio.utils.template_util import parse_template_size
         video_width, video_height = parse_template_size(frame_template)
         st.caption(tr("template.video_size_info", width=video_width, height=video_height))
         
         # Custom template parameters (for video generation)
-        from pixelle_video.services.frame_html import HTMLFrameGenerator
+        from morpheus_video_studio.services.frame_html import HTMLFrameGenerator
         # Resolve template path to support both data/templates/ and templates/
-        from pixelle_video.utils.template_util import resolve_template_path
+        from morpheus_video_studio.utils.template_util import resolve_template_path
         template_path_for_params = resolve_template_path(frame_template)
         generator_for_params = HTMLFrameGenerator(template_path_for_params)
         custom_params_for_video = generator_for_params.parse_template_parameters()
@@ -605,7 +624,7 @@ def render_style_config(pixelle_video):
         st.session_state['template_media_height'] = media_height
         
         # Detect template media type
-        from pixelle_video.utils.template_util import get_template_type
+        from morpheus_video_studio.utils.template_util import get_template_type
         
         template_name = Path(frame_template).name
         template_media_type = get_template_type(template_name)
@@ -718,7 +737,7 @@ def render_style_config(pixelle_video):
                 )
             
             # Info: Size is auto-determined from template
-            from pixelle_video.utils.template_util import parse_template_size, resolve_template_path
+            from morpheus_video_studio.utils.template_util import parse_template_size, resolve_template_path
             template_width, template_height = parse_template_size(resolve_template_path(frame_template))
             st.info(f"📐 {tr('template.size_info')}: {template_width} × {template_height}")
             
@@ -726,10 +745,10 @@ def render_style_config(pixelle_video):
             if st.button(tr("template.preview_button"), key="btn_preview_template", use_container_width=True):
                 with st.spinner(tr("template.preview_generating")):
                     try:
-                        from pixelle_video.services.frame_html import HTMLFrameGenerator
+                        from morpheus_video_studio.services.frame_html import HTMLFrameGenerator
 
                         # Use the currently selected template (size is auto-parsed)
-                        from pixelle_video.utils.template_util import resolve_template_path
+                        from morpheus_video_studio.utils.template_util import resolve_template_path
                         template_path = resolve_template_path(frame_template)
                         generator = HTMLFrameGenerator(template_path)
                         
@@ -803,21 +822,61 @@ def render_style_config(pixelle_video):
                 "stock_turbo": "Turbo 极速素材",
                 "comfy_first": "Comfy 优先",
             }
+            if template_media_type == "video":
+                media_strategy_options["hyperframe"] = "HyperFrame 视频"
             media_strategy = st.radio(
                 "媒体生成策略",
                 options=list(media_strategy_options.keys()),
                 format_func=lambda key: media_strategy_options[key],
-                index=0,
+                index=2,
                 horizontal=False,
                 help=(
-                    "推荐使用素材优先：先用 Pexels + Pixabay，素材失败时再由 ComfyUI 辅助。"
+                    "默认推荐使用 ComfyUI：主题一致性和画面控制更稳定。"
+                    "素材优先适合通用可拍题材，但不适合明确作品 IP。"
                     "Turbo 会跳过视觉提示词生成，速度最快但匹配会更泛化。"
+                    "HyperFrame 会用本地 HyperFrames 渲染视频片段。"
                 ),
                 key="media_generation_strategy"
             )
 
+            comfyui_config = config_manager.get_comfyui_config()
+            media_config_key = "video" if template_media_type == "video" else "image"
+            selected_preset = None
+            style_mode = "manual"
+
+            if template_media_type == "image":
+                default_image_preset = get_default_image_style_preset()
+                presets_available = default_image_preset is not None
+
+                if "media_style_mode" not in st.session_state:
+                    st.session_state["media_style_mode"] = "preset" if presets_available else "manual"
+                elif not presets_available and st.session_state["media_style_mode"] == "preset":
+                    st.session_state["media_style_mode"] = "manual"
+
+                if presets_available and "image_style_preset" not in st.session_state:
+                    st.session_state["image_style_preset"] = default_image_preset["label"]
+
+                style_mode = st.radio(
+                    "风格模式",
+                    options=["preset", "manual"],
+                    format_func=lambda value: {
+                        "preset": "风格标签",
+                        "manual": "手动工作流",
+                    }[value],
+                    horizontal=True,
+                    key="media_style_mode",
+                )
+                if style_mode == "preset" and presets_available:
+                    selected_preset = render_image_style_preset_picker()
+                    if selected_preset:
+                        st.caption(selected_preset["description"])
+                elif style_mode == "preset":
+                    st.warning("风格标签暂不可用，已切换为手动工作流模式。")
+                    style_mode = "manual"
+                    st.session_state["media_style_mode"] = "manual"
+
             # Get available workflows and filter by template type
-            all_workflows = pixelle_video.media.list_workflows()
+            all_workflows = morpheus_video_studio.media.list_workflows()
             
             # Filter workflows based on template media type
             if template_media_type == "video":
@@ -837,27 +896,31 @@ def render_style_config(pixelle_video):
             default_workflow_index = 0
         
             # If user has a saved preference in config, try to match it
-            comfyui_config = config_manager.get_comfyui_config()
-            # Select config based on template type (image or video)
-            media_config_key = "video" if template_media_type == "video" else "image"
             saved_workflow = comfyui_config.get(media_config_key, {}).get("default_workflow", "")
             if saved_workflow and saved_workflow in workflow_keys:
                 default_workflow_index = workflow_keys.index(saved_workflow)
-        
-            workflow_display = st.selectbox(
-                "Workflow",
-                workflow_options if workflow_options else ["No workflows found"],
-                index=default_workflow_index,
-                label_visibility="collapsed",
-                key="media_workflow_select"
-            )
-        
-            # Get the actual workflow key (e.g., "selfhost/image_flux.json")
-            if workflow_options:
-                workflow_selected_index = workflow_options.index(workflow_display)
-                workflow_key = workflow_keys[workflow_selected_index]
+
+            if template_media_type == "image" and style_mode == "preset":
+                workflow_key = (
+                    selected_preset["workflow"]
+                    if selected_preset
+                    else (workflow_keys[default_workflow_index] if workflow_options else "selfhost/image_dreamshaper_m4.json")
+                )
             else:
-                workflow_key = "selfhost/image_dreamshaper_m4.json"
+                workflow_display = st.selectbox(
+                    "Workflow",
+                    workflow_options if workflow_options else ["No workflows found"],
+                    index=default_workflow_index,
+                    label_visibility="collapsed",
+                    key="media_workflow_select"
+                )
+
+                # Get the actual workflow key (e.g., "selfhost/image_flux.json")
+                if workflow_options:
+                    workflow_selected_index = workflow_options.index(workflow_display)
+                    workflow_key = workflow_keys[workflow_selected_index]
+                else:
+                    workflow_key = "selfhost/image_dreamshaper_m4.json"
 
             if media_strategy in ("stock_first", "stock_turbo"):
                 workflow_key = "stock/comfy" if media_strategy == "stock_first" else "stock/turbo"
@@ -870,9 +933,30 @@ def render_style_config(pixelle_video):
                     st.caption(f"素材源：全部（{', '.join(enabled_stock_sources)}）")
                 else:
                     st.warning("已选择素材策略，但还没有配置 Pexels 或 Pixabay API Key。")
+            elif media_strategy == "hyperframe":
+                workflow_key = "hyperframe/render"
+                hyperframe_config = _get_hyperframe_config()
+                if not hyperframe_config.get("enabled", True):
+                    st.warning("HyperFrame 当前未启用，请先在系统设置里启用。")
+                else:
+                    from morpheus_video_studio.utils.hyperframe_util import check_hyperframe_health
+
+                    health_timeout = min(
+                        max(float(hyperframe_config.get("timeout_seconds", 300)), 10.0),
+                        30.0,
+                    )
+                    hf_ok, hf_msg = check_hyperframe_health(
+                        hyperframe_config.get("command", "npx --yes hyperframes"),
+                        timeout=health_timeout,
+                    )
+                    if hf_ok:
+                        st.caption(hf_msg)
+                    else:
+                        st.warning(f"{hf_msg} 生成失败时会自动改用全部素材源（Pexels + Pixabay）。")
             
             # Check and warn for selfhost media workflow (auto popup if not confirmed)
-            check_and_warn_selfhost_workflow(workflow_key)
+            if workflow_key.startswith("selfhost/"):
+                check_and_warn_selfhost_workflow(workflow_key)
 
             if media_strategy == "comfy_first" and workflow_key.endswith("video_dreamshaper_m4_fast.json"):
                 st.warning(
@@ -902,16 +986,19 @@ def render_style_config(pixelle_video):
             # Prompt prefix input
             # Get current prompt_prefix from config (based on media type)
             current_prefix = comfyui_config.get(media_config_key, {}).get("prompt_prefix", "")
-        
-            # Prompt prefix input (temporary, not saved to config)
-            prompt_prefix = st.text_area(
-                tr('style.prompt_prefix'),
-                value=current_prefix,
-                placeholder=tr("style.prompt_prefix_placeholder"),
-                height=80,
-                label_visibility="visible",
-                help=tr("style.prompt_prefix_help")
-            )
+
+            if template_media_type == "image" and style_mode == "preset":
+                prompt_prefix = selected_preset["prompt_prefix"] if selected_preset else current_prefix
+            else:
+                # Prompt prefix input (temporary, not saved to config)
+                prompt_prefix = st.text_area(
+                    tr('style.prompt_prefix'),
+                    value=current_prefix,
+                    placeholder=tr("style.prompt_prefix_placeholder"),
+                    height=80,
+                    label_visibility="visible",
+                    help=tr("style.prompt_prefix_help")
+                )
         
             # Media preview expander
             preview_title = tr("style.video_preview_title") if template_media_type == "video" else tr("style.preview_title")
@@ -937,13 +1024,13 @@ def render_style_config(pixelle_video):
                     previewing_text = tr("style.video_previewing") if template_media_type == "video" else tr("style.previewing")
                     with st.spinner(previewing_text):
                         try:
-                            from pixelle_video.utils.prompt_helper import build_image_prompt
+                            from morpheus_video_studio.utils.prompt_helper import build_image_prompt
                         
                             # Build final prompt with prefix
                             final_prompt = build_image_prompt(test_prompt, prompt_prefix)
                         
                             # Generate preview media (use user-specified size and media type)
-                            media_result = run_async(pixelle_video.media(
+                            media_result = run_async(morpheus_video_studio.media(
                                 prompt=final_prompt,
                                 workflow=workflow_key,
                                 media_type=template_media_type,

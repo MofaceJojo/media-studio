@@ -94,7 +94,7 @@
   "7": {
     "class_type": "SaveImage",
     "inputs": {
-      "filename_prefix": "pixelle_realisticvision",
+      "filename_prefix": "morpheus_realisticvision",
       "images": [
         "6",
         0

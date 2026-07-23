@@ -19,7 +19,7 @@ Endpoints for generating narrations, image prompts, and titles.
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from api.dependencies import PixelleVideoDep
+from api.dependencies import MorpheusVideoStudioDep
 from api.schemas.content import (
     NarrationGenerateRequest,
     NarrationGenerateResponse,
@@ -28,7 +28,7 @@ from api.schemas.content import (
     TitleGenerateRequest,
     TitleGenerateResponse,
 )
-from pixelle_video.utils.content_generators import (
+from morpheus_video_studio.utils.content_generators import (
     generate_narrations_from_topic,
     generate_image_prompts,
     generate_title,
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/content", tags=["Content Generation"])
 @router.post("/narration", response_model=NarrationGenerateResponse)
 async def generate_narration(
     request: NarrationGenerateRequest,
-    pixelle_video: PixelleVideoDep
+    morpheus_video_studio: MorpheusVideoStudioDep
 ):
     """
     Generate narrations from text
@@ -59,7 +59,7 @@ async def generate_narration(
         
         # Call narration generator utility function
         narrations = await generate_narrations_from_topic(
-            llm_service=pixelle_video.llm,
+            llm_service=morpheus_video_studio.llm,
             topic=request.text,
             n_scenes=request.n_scenes,
             min_words=request.min_words,
@@ -78,7 +78,7 @@ async def generate_narration(
 @router.post("/image-prompt", response_model=ImagePromptGenerateResponse)
 async def generate_image_prompt(
     request: ImagePromptGenerateRequest,
-    pixelle_video: PixelleVideoDep
+    morpheus_video_studio: MorpheusVideoStudioDep
 ):
     """
     Generate image prompts from narrations
@@ -96,7 +96,7 @@ async def generate_image_prompt(
         
         # Call image prompt generator utility function
         image_prompts = await generate_image_prompts(
-            llm_service=pixelle_video.llm,
+            llm_service=morpheus_video_studio.llm,
             narrations=request.narrations,
             min_words=request.min_words,
             max_words=request.max_words
@@ -114,7 +114,7 @@ async def generate_image_prompt(
 @router.post("/title", response_model=TitleGenerateResponse)
 async def generate_title_endpoint(
     request: TitleGenerateRequest,
-    pixelle_video: PixelleVideoDep
+    morpheus_video_studio: MorpheusVideoStudioDep
 ):
     """
     Generate video title from text
@@ -131,7 +131,7 @@ async def generate_title_endpoint(
         
         # Call title generator utility function
         title = await generate_title(
-            llm_service=pixelle_video.llm,
+            llm_service=morpheus_video_studio.llm,
             content=request.text,
             strategy="llm"
         )
@@ -143,4 +143,3 @@ async def generate_title_endpoint(
     except Exception as e:
         logger.error(f"Title generation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-

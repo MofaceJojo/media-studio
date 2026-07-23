@@ -25,12 +25,17 @@ import streamlit as st
 from loguru import logger
 
 from web.i18n import tr, get_language
+from web.components.tts_preferences import (
+    get_local_tts_preferences,
+    persist_local_tts_preferences,
+    render_tts_config,
+)
 from web.pipelines.base import PipelineUI, register_pipeline_ui
-from web.components.content_input import render_bgm_section, render_version_info
+from web.components.content_input import render_bgm_section
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import check_and_warn_selfhost_workflow
-from pixelle_video.config import config_manager
-from pixelle_video.models.progress import ProgressEvent
+from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.models.progress import ProgressEvent
 
 
 class AssetBasedPipelineUI(PipelineUI):
@@ -49,7 +54,7 @@ class AssetBasedPipelineUI(PipelineUI):
     def description(self):
         return tr("pipeline.custom_media.description")
     
-    def render(self, pixelle_video: Any):
+    def render(self, morpheus_video_studio: Any):
         # Three-column layout
         left_col, middle_col, right_col = st.columns([1, 1, 1])
         
@@ -59,13 +64,12 @@ class AssetBasedPipelineUI(PipelineUI):
         with left_col:
             asset_params = self._render_asset_input()
             bgm_params = render_bgm_section(key_prefix="asset_")
-            render_version_info()
         
         # ====================================================================
         # Middle Column: Video Configuration
         # ====================================================================
         with middle_col:
-            config_params = self._render_video_config(pixelle_video)
+            config_params = self._render_video_config(morpheus_video_studio)
         
         # ====================================================================
         # Right Column: Output Preview
@@ -79,7 +83,7 @@ class AssetBasedPipelineUI(PipelineUI):
                 **config_params
             }
             
-            self._render_output_preview(pixelle_video, video_params)
+            self._render_output_preview(morpheus_video_studio, video_params)
     
     def _render_asset_input(self) -> dict:
         """Render asset upload section"""
@@ -92,6 +96,15 @@ class AssetBasedPipelineUI(PipelineUI):
                 st.markdown(f"**{tr('help.how')}**")
                 st.markdown(tr("asset_based.assets.how"))
             
+            preloaded_assets = st.session_state.get("studio_selected_asset_paths") or []
+            valid_preloaded_assets = [
+                str(Path(path).resolve())
+                for path in preloaded_assets
+                if path and Path(path).exists()
+            ]
+            if valid_preloaded_assets:
+                st.info(f"已从资产库带入 {len(valid_preloaded_assets)} 个素材，可直接生成或继续补充上传。")
+
             # File uploader for multiple files
             uploaded_files = st.file_uploader(
                 tr("asset_based.assets.upload"),
@@ -102,7 +115,7 @@ class AssetBasedPipelineUI(PipelineUI):
             )
             
             # Save uploaded files to temp directory with unique session ID
-            asset_paths = []
+            asset_paths = list(valid_preloaded_assets)
             if uploaded_files:
                 import uuid
                 session_id = str(uuid.uuid4()).replace('-', '')[:12]
@@ -114,22 +127,29 @@ class AssetBasedPipelineUI(PipelineUI):
                     with open(file_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
                     asset_paths.append(str(file_path.absolute()))
-                
+
+            if asset_paths:
                 st.success(tr("asset_based.assets.count", count=len(asset_paths)))
-                
-                # Preview uploaded assets
+
                 with st.expander(tr("asset_based.assets.preview"), expanded=True):
-                    # Show in a grid (3 columns)
                     cols = st.columns(3)
-                    for i, (file, path) in enumerate(zip(uploaded_files, asset_paths)):
+
+                    preview_items: list[tuple[str, str, str]] = []
+                    for path in valid_preloaded_assets:
+                        preview_items.append((Path(path).name, path, "preloaded"))
+                    for path in asset_paths:
+                        if path not in valid_preloaded_assets:
+                            preview_items.append((Path(path).name, path, "uploaded"))
+
+                    for i, (label, path, source_kind) in enumerate(preview_items):
                         with cols[i % 3]:
-                            # Check if image or video
                             ext = Path(path).suffix.lower()
+                            caption = f"{label} · 资产库" if source_kind == "preloaded" else label
                             if ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
-                                st.image(file, caption=file.name, use_container_width=True)
+                                st.image(path, caption=caption, use_container_width=True)
                             elif ext in [".mp4", ".mov", ".avi", ".mkv", ".webm"]:
-                                st.video(file)
-                                st.caption(file.name)
+                                st.video(path)
+                                st.caption(caption)
             else:
                 st.info(tr("asset_based.assets.empty_hint"))
         
@@ -158,7 +178,7 @@ class AssetBasedPipelineUI(PipelineUI):
             "intent": intent if intent else None
         }
     
-    def _render_video_config(self, pixelle_video: Any) -> dict:
+    def _render_video_config(self, morpheus_video_studio: Any) -> dict:
         """Render video configuration section"""
         # Duration configuration
         with st.container(border=True):
@@ -209,67 +229,21 @@ class AssetBasedPipelineUI(PipelineUI):
                 st.info(tr("asset_based.source.selfhost_hint"))
                 check_and_warn_selfhost_workflow("selfhost/analyse_image.json")
         
-        # TTS configuration
+        # TTS configuration (shared renderer: Edge local + OmniVoice)
         with st.container(border=True):
             st.markdown(f"**{tr('section.tts')}**")
-            
-            # Import voice configuration
-            from pixelle_video.tts_voices import EDGE_TTS_VOICES, get_voice_display_name
-            
-            # Get saved voice from config
-            comfyui_config = config_manager.get_comfyui_config()
-            tts_config = comfyui_config.get("tts", {})
-            local_config = tts_config.get("local", {})
-            saved_voice = local_config.get("voice", "zh-CN-YunjianNeural")
-            saved_speed = local_config.get("speed", 1.2)
-            
-            # Build voice options with i18n
-            voice_options = []
-            voice_ids = []
-            default_voice_index = 0
-            
-            for idx, voice_config in enumerate(EDGE_TTS_VOICES):
-                voice_id = voice_config["id"]
-                display_name = get_voice_display_name(voice_id, tr, get_language())
-                voice_options.append(display_name)
-                voice_ids.append(voice_id)
-                
-                if voice_id == saved_voice:
-                    default_voice_index = idx
-            
-            # Two-column layout
-            voice_col, speed_col = st.columns([1, 1])
-            
-            with voice_col:
-                selected_voice_display = st.selectbox(
-                    tr("tts.voice_selector"),
-                    voice_options,
-                    index=default_voice_index,
-                    key="asset_tts_voice"
-                )
-                selected_voice_index = voice_options.index(selected_voice_display)
-                voice_id = voice_ids[selected_voice_index]
-            
-            with speed_col:
-                tts_speed = st.slider(
-                    tr("tts.speed"),
-                    min_value=0.5,
-                    max_value=2.0,
-                    value=saved_speed,
-                    step=0.1,
-                    format="%.1fx",
-                    key="asset_tts_speed"
-                )
-                st.caption(tr("tts.speed_label", speed=f"{tts_speed:.1f}"))
-        
+            tts_params = render_tts_config(morpheus_video_studio, key_prefix="asset")
+
         return {
             "duration": duration,
             "source": source,
-            "voice_id": voice_id,
-            "tts_speed": tts_speed
+            "voice_id": tts_params["voice_id"],
+            "tts_speed": tts_params["tts_speed"],
+            "tts_inference_mode": tts_params["tts_inference_mode"],
+            "tts_instruct": tts_params["tts_instruct"],
         }
     
-    def _render_output_preview(self, pixelle_video: Any, video_params: dict):
+    def _render_output_preview(self, morpheus_video_studio: Any, video_params: dict):
         """Render output preview section"""
         with st.container(border=True):
             st.markdown(f"**{tr('section.video_generation')}**")
@@ -309,10 +283,10 @@ class AssetBasedPipelineUI(PipelineUI):
                 
                 try:
                     # Import pipeline
-                    from pixelle_video.pipelines.asset_based import AssetBasedPipeline
+                    from morpheus_video_studio.pipelines.asset_based import AssetBasedPipeline
                     
                     # Create pipeline
-                    pipeline = AssetBasedPipeline(pixelle_video)
+                    pipeline = AssetBasedPipeline(morpheus_video_studio)
                     
                     # Progress callback
                     def update_progress(event: ProgressEvent):

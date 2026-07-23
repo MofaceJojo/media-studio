@@ -1,6 +1,6 @@
 # 安装
 
-本页面将指导你完成 Pixelle-Video 的安装。
+本页面将指导你完成 Morpheus Video Studio 的安装。
 
 ---
 
@@ -25,7 +25,7 @@
 
 ### 下载和安装
 
-1. 访问 [GitHub Releases](https://github.com/AIDC-AI/Pixelle-Video/releases/latest) 下载最新版本
+1. 访问 [GitHub Releases](https://github.com/MofaceJojo/morpheus-video-studio/releases/latest) 下载最新版本
 2. 下载最新的 Windows 一键整合包并解压到任意目录
 3. 双击运行 `start.bat` 启动 Web 界面
 4. 浏览器会自动打开 `http://localhost:8501`
@@ -43,8 +43,8 @@
 ### 第一步：克隆项目
 
 ```bash
-git clone https://github.com/AIDC-AI/Pixelle-Video.git
-cd Pixelle-Video
+git clone https://github.com/MofaceJojo/morpheus-video-studio.git
+cd Morpheus Video Studio
 ```
 
 ### 第二步：安装依赖
@@ -92,7 +92,7 @@ uv run streamlit run web/app.py
 streamlit run web/app.py
 ```
 
-浏览器应该会自动打开 `http://localhost:8501`，显示 Pixelle-Video 的 Web 界面。
+浏览器应该会自动打开 `http://localhost:8501`，显示 Morpheus Video Studio 的 Web 界面。
 
 !!! success "安装成功！"
     如果能看到 Web 界面，说明安装成功了！接下来请查看 [配置说明](configuration.md) 来设置服务。

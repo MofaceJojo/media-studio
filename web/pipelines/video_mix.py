@@ -4,7 +4,7 @@ from typing import Any
 
 import streamlit as st
 
-from pixelle_video.services.moneyprinter_tools import media_files, mix_from_scene_dirs
+from morpheus_video_studio.services.stock_publish_tools import media_files, mix_from_scene_dirs
 from web.pipelines.base import PipelineUI, register_pipeline_ui
 
 
@@ -22,7 +22,7 @@ class VideoMixPipelineUI(PipelineUI):
     icon = "🎛️"
     description = "从多个场景素材文件夹随机抽取片段，批量生成不重复短视频。"
 
-    def render(self, pixelle_video: Any):
+    def render(self, morpheus_video_studio: Any):
         left, middle, right = st.columns([1, 1, 1])
         with left:
             with st.container(border=True):

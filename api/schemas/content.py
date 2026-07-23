@@ -77,10 +77,6 @@ class ImagePromptGenerateResponse(BaseModel):
     image_prompts: List[str] = Field(..., description="Generated image prompts")
 
 
-# ============================================================================
-# Title Generation
-# ============================================================================
-
 class TitleGenerateRequest(BaseModel):
     """Title generation request"""
     text: str = Field(..., description="Source text")
@@ -100,4 +96,3 @@ class TitleGenerateResponse(BaseModel):
     success: bool = True
     message: str = "Success"
     title: str = Field(..., description="Generated title")
-

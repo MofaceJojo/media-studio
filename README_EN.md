@@ -1,440 +1,113 @@
-<h1 align="center">🎬 Morpheus Video Studio —— AI Fully Automated Short Video Engine</h1>
+<h1 align="center">🎬 Morpheus Video Studio</h1>
+
+<p align="center"><b>Content-first · zero-cost local stack · reliably rendered AI video workbench</b></p>
 
 <p align="center"><b>English</b> | <a href="README.md">中文</a></p>
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=uUkx-lRxLjc" target="_blank"><img src="https://img.shields.io/badge/🎥 Video%20Tutorial-EA4C89" alt="Video Tutorial"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/releases" target="_blank"><img src="https://img.shields.io/badge/📦 Windows-50C878" alt="Windows Package"></a>
-  <a href="https://aidc-ai.github.io/Morpheus Video Studio" target="_blank"><img src="https://img.shields.io/badge/📘 Documentation-4A90E2" alt="Documentation"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/stargazers"><img src="https://img.shields.io/github/stars/AIDC-AI/Morpheus Video Studio.svg" alt="Stargazers"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/issues"><img src="https://img.shields.io/github/issues/AIDC-AI/Morpheus Video Studio.svg" alt="Issues"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/network/members"><img src="https://img.shields.io/github/forks/AIDC-AI/Morpheus Video Studio.svg" alt="Forks"></a>
-  <a href="https://github.com/AIDC-AI/Morpheus Video Studio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/AIDC-AI/Morpheus Video Studio.svg" alt="License"></a>
+  <a href="https://github.com/MofaceJojo/media-studio/stargazers"><img src="https://img.shields.io/github/stars/MofaceJojo/media-studio.svg" alt="Stargazers"></a>
+  <a href="https://github.com/MofaceJojo/media-studio/issues"><img src="https://img.shields.io/github/issues/MofaceJojo/media-studio.svg" alt="Issues"></a>
+  <a href="https://github.com/MofaceJojo/media-studio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MofaceJojo/media-studio.svg" alt="License"></a>
 </p>
 
-https://github.com/user-attachments/assets/a42e7457-fcc8-40da-83fc-784c45a8b95d
+Morpheus Video Studio chains **content input, audio generation, video generation, digital-human narration, and asset reuse** into one production pipeline. Give it a script or a topic and it produces an upload-ready video — narration, images, storyboard, editing, and subtitles — entirely on your machine.
 
-Just input a **topic**, and Morpheus Video Studio will automatically:
-- ✍️ Write video script
-- 🎨 Generate AI images/videos  
-- 🗣️ Synthesize voice narration
-- 🎵 Add background music
-- 🎬 Create video with one click
+## 🎯 Three design goals
 
+1. **Zero-cost generation** — apart from the script LLM API call, everything is free: local OmniVoice / Edge TTS narration, local ComfyUI images, free stock sources (Pexels / Pixabay), local HyperFrames layout rendering.
+2. **Reliable output** — built around one invariant: *audio duration drives video duration*. Narration is generated first; its real measured length decides shot counts and hold times. Transitions never eat narration; every render passes a QA gate.
+3. **Manual publishing, automated prep** — an accurate `final.srt` is written next to every video; uploads stay manual (avoiding platform risk-control), the system just preps the material.
 
-**Zero threshold, zero editing experience** - Make video creation as simple as typing a sentence!
+## ✨ Highlights
 
+- ✅ **Audio-driven pacing** — video length follows real narration length, cut frequency derived from it
+- ✅ **Pacing profiles** — fast shorts / calm YouTube pacing, auto-selected for 16:9 landscape
+- ✅ **Ken Burns motion** — stills always get slow zoom/pan; no more frozen frames
+- ✅ **Final-video QA gate** — stream integrity, duration drift, frozen-picture and broken-narration detection on every render
+- ✅ **SRT export** — cue timing from real per-narration audio durations
+- ✅ **Local style presets** — photoreal / hand-drawn fantasy / eastern classical / cyberpunk / picture-book, all on local models
+- ✅ **Workshop architecture** — content library, audio workshop, video workshop, digital human, asset library
+- ✅ **Flexible aspect ratios** — 9:16 (Shorts/Douyin), 16:9 (YouTube), 1:1
+- ✅ **Content recipes** — science / TCM / ranking / medical skeletons that pin script structure instead of drifting into life-insight chatter
+- ✅ **No-human visual rules** — knowledge channels steer imagery to herbs, vessels, classical texts and fields, since local models mangle people
+- ✅ **Classical text frames** — quotations are typeset from real characters, never drawn by AI (which produces gibberish)
+- ✅ **BGM auto-ducking** — music dips under narration and swells back in the gaps
+- ✅ **TTS auto-fallback** — an OmniVoice failure degrades to Edge TTS for that segment instead of failing the render
+- ✅ **Resume** — an interrupted render reuses finished frames and only rebuilds the missing tail
+- ✅ **Restyle workshop** — filter presets (instant) or AI repaint into animation styles, with optional reference-image guidance
 
-## 🖥️ Web Interface Preview
+## 📊 Pipeline
 
-![Web UI Interface](resources/webui_en.png)
-
-
-## 📋 Recent Updates
-
-- ✅ **2026-01-26**: Added the Motion Transfer pipeline — upload a reference video and an image to transfer motion.
-- ✅ **2026-01-14**: Added "Digital Human" and "Image-to-Video" pipelines, multi-language TTS voices support
-- ✅ **2026-01-06**: Added Local ComfyUI 48G VRAM machine support
-- ✅ **2025-12-28**: Configurable Local ComfyUI concurrency limit, improved LLM structured data response handling
-- ✅ **2025-12-17**: Added ComfyUI API Key configuration, Nano Banana model support, API template custom parameters
-- ✅ **2025-12-10**: Built-in FAQ in sidebar, fixed edge-tts version to resolve TTS service instability
-- ✅ **2025-12-08**: Support multiple script split modes (paragraph/line/sentence), improved template selection with direct preview
-- ✅ **2025-12-06**: Fixed video generation API URL path handling with cross-platform compatibility
-- ✅ **2025-12-05**: Added Windows all-in-one package download, optimized image and video analysis workflows
-- ✅ **2025-12-04**: New "Custom Media" feature - upload your photos/videos with AI-powered analysis and script generation
-- ✅ **2025-11-18**: Parallel processing for Local ComfyUI, added history page, batch video task creation support
-
-
-## ✨ Key Features
-
-- ✅ **Fully Automatic Generation** - Input a topic, automatically generate complete video
-- ✅ **AI Smart Copywriting** - Intelligently create narration based on topic, no need to write scripts yourself
-- ✅ **AI Generated Images** - Each sentence comes with beautiful AI illustrations
-- ✅ **AI Generated Videos** - Support AI video generation models (like WAN 2.1) to create dynamic video content
-- ✅ **AI Generated Voice** - Support Edge-TTS, Index-TTS and many other mainstream TTS solutions
-- ✅ **Background Music** - Support adding BGM to make videos more atmospheric
-- ✅ **Visual Styles** - Multiple templates to choose from, create unique video styles
-- ✅ **Flexible Dimensions** - Support portrait, landscape and other video dimensions
-- ✅ **Multiple AI Models** - Support GPT, Qwen, DeepSeek, Ollama and more
-- ✅ **Flexible Atomic Capability Combination** - Based on ComfyUI architecture, can use preset workflows or customize any capability (such as replacing image generation model with FLUX, replacing TTS with ChatTTS, etc.)
-
-
-## 📊 Video Generation Pipeline
-
-Morpheus Video Studio adopts a modular design, the entire video generation process is clear and concise:
-
-![Video Generation Flow](resources/flow_en.png)
-
-From input text to final video output, the entire process is clear and simple: **Script Generation → Image Planning → Frame-by-Frame Processing → Video Composition**
-
-Each step supports flexible customization, allowing you to choose different AI models, audio engines, visual styles, etc., to meet personalized creation needs.
-
-
-## 🎬 Video Examples
-
-Here are actual cases generated using Morpheus Video Studio, showcasing video effects with different themes and styles:
-
-### 📱 Extension Module Video Showcase
-
-<table>
-<tr>
-<td width="33%">
-<h3>👤 AI Digital Avatar</h3>
-<video src="https://github.com/user-attachments/assets/7c122563-c2e0-4dcd-a73c-25ba1d4fa2dd" controls width="100%"></video>
-<p align="center"><b>Korean-speaking AI Avatar</b></p>
-</td>
-<td width="33%">
-<h3>🖼️ Image-to-Video</h3>
-<video src="https://github.com/user-attachments/assets/5b4eef17-07d0-4bde-9748-2ed68cc9888e" controls width="100%"></video>
-<p align="center"><b>Animated Cartoon Video</b></p>
-</td>
-<td width="33%">
-<h3>💃 Motion Transfer</h3>
-<video src="https://github.com/user-attachments/assets/7b1240bc-e965-434c-b343-118ec4793d4f" controls width="100%"></video>
-<p align="center"><b>Dancing Kitten</b></p>
-</td>
-</tr>
-</table>
-
-### 📱 Portrait Video Showcase
-
-<table>
-<tr>
-<td width="33%">
-<h3>🌄 Documentary & Lifestyle – Default Template</h3>
-<video src="https://github.com/user-attachments/assets/e6716c1d-78de-453d-84c2-10873c8c595f" controls width="100%"></video>
-<p align="center"><b>The Scenery Along the Journey</b></p>
-</td>
-<td width="33%">
-<h3>🔍 Cultural Deconstruction – Default Template</h3>
-<video src="https://github.com/user-attachments/assets/f5de75f6-135a-4ab4-9f5f-079f649764d5" controls width="100%"></video>
-<p align="center"><b>Santa ID</b></p>
-</td>
-<td width="33%">
-<h3>🔭 Scientific Inquiry – Default Template</h3>
-<video src="https://github.com/user-attachments/assets/ceb8b0df-8331-4e1f-88e7-db5b295a1c1d" controls width="100%"></video>
-<p align="center"><b>Why Haven’t We Found Alien Civilizations Yet?</b></p>
-</td>
-</tr>
-<tr>
-<td width="33%">
-<h3>🌱 Personal Growth – Cloned Voice</h3>
-<video src="https://github.com/user-attachments/assets/1bad9a49-df83-4905-9cc8-9a7640e9c7d8" controls width="100%"></video>
-<p align="center"><b>How to Level Up Yourself</b></p>
-</td>
-<td width="33%">
-<h3>🧠 Deep Thinking – Default Template</h3>
-<video src="https://github.com/user-attachments/assets/663b705a-2aea-44bc-b266-4bb27aa255a8" controls width="100%"></video>
-<p align="center"><b>Understanding Antifragility</b></p>
-</td>
-<td width="33%">
-<h3>🏯 History & Culture – Static Frame</h3>
-<video src="https://github.com/user-attachments/assets/56e0a018-fa99-47eb-a97f-fc2fa8915724" controls width="100%"></video>
-<p align="center"><b>Zizhi Tongjian (Comprehensive Mirror for Aid in Governance)</b></p>
-</td>
-</tr>
-<tr>
-<td width="33%">
-<h3>☀️ Emotional Storytelling – Cloned Voice</h3>
-<video src="https://github.com/user-attachments/assets/4687df95-dd21-4a7b-b01e-f33a7b646644" controls width="100%"></video>
-<p align="center"><b>Winter Sunlight</b></p>
-</td>
-<td width="33%">
-<h3>📜 Novel Adaptation – Custom Script</h3>
-<video src="https://github.com/user-attachments/assets/d354465e-3fa8-40b4-93e9-61ad75ef0697" controls width="100%"></video>
-<p align="center"><b>Doupo Cangqiong (Battle Through the Heavens)</b></p>
-</td>
-<td width="33%">
-<h3>🧬 Knowledge Explainer – Qwen Image Generation</h3>
-<video src="https://github.com/user-attachments/assets/8ac21768-41ce-4d41-acdd-e3dd3eb9725a" controls width="100%"></video>
-<p align="center"><b>Essential Wellness Tips</b></p>
-</td>
-</tr>
-</table>
-
-### 🖥️ Landscape Video Showcase
-
-<table>
-<tr>
-<td width="50%">
-<h3>💰 Side Hustle Money Making - Movie Template</h3>
-<video src="https://github.com/user-attachments/assets/c9209d4e-73a6-4b82-aaad-cf102248c9e2" controls width="100%"></video>
-<p align="center"><b>Side Hustle Money Making</b></p>
-</td>
-<td width="50%">
-<h3>🏛️ Historical Commentary - Custom Template</h3>
-<video src="https://github.com/user-attachments/assets/a767c452-d5f1-4cff-bb34-b80fff0d4c3e" controls width="100%"></video>
-<p align="center"><b>Insights from Zizhi Tongjian</b></p>
-</td>
-</tr>
-</table>
-
-> 💡 **Tip**: All these videos are fully automatically generated by AI just by inputting a topic keyword, without any video editing experience required!
-
-<div id="tutorial-start" />
-
-## 🚀 Quick Start
-
-### 🪟 Windows All-in-One Package (Recommended for Windows Users)
-
-**No need to install Python, uv, or ffmpeg - ready to use out of the box!**
-
-👉 **[Download Windows All-in-One Package](https://github.com/AIDC-AI/Morpheus Video Studio/releases/latest)**
-
-1. Download the latest Windows All-in-One Package and extract it
-2. Double-click `start.bat` to launch the Web interface
-3. Browser will automatically open http://localhost:8501
-4. Configure LLM API and image generation service in "⚙️ System Configuration"
-5. Start generating videos!
-
-> 💡 **Tip**: The package includes all dependencies, no need to manually install any environment. On first use, you only need to configure API keys.
-
-
-### Install from Source (For macOS / Linux Users or Users Who Need Customization)
-
-#### Prerequisites
-
-Before starting, you need to install Python package manager `uv` and video processing tool `ffmpeg`:
-
-##### Install uv
-
-Please visit the uv official documentation to see the installation method for your system:  
-👉 **[uv Installation Guide](https://docs.astral.sh/uv/getting-started/installation/)**
-
-After installation, run `uv --version` in the terminal to verify successful installation.
-
-##### Install ffmpeg
-
-**macOS**
-```bash
-brew install ffmpeg
+```
+Script (input or LLM-generated)
+   → TTS narration (OmniVoice / Edge TTS, real duration measured)
+   → Shot planning (audio duration → shot count & hold times)
+   → Per-frame production (ComfyUI image → HTML template → Ken Burns → segment)
+   → Concat (padded-tail transitions, zero narration loss) + BGM
+   → QA gate (duration / frozen frames / audio integrity)
+   → final.mp4 + final.srt
 ```
 
-**Ubuntu / Debian**
-```bash
-sudo apt update
-sudo apt install ffmpeg
-```
+## 🚀 Quick start
 
-**Windows**
-- Download URL: https://ffmpeg.org/download.html
-- After downloading, extract and add the `bin` directory to the system environment variable PATH
+### Prerequisites
 
-After installation, run `ffmpeg -version` in the terminal to verify successful installation.
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- [ffmpeg](https://ffmpeg.org/download.html) (`brew install ffmpeg` / `apt install ffmpeg`)
+- Local [ComfyUI](https://github.com/Comfy-Org/ComfyUI) (image generation, default `http://127.0.0.1:8188`)
+- Optional: [OmniVoice Studio](https://github.com/debpalash/OmniVoice-Studio) (high-quality local TTS; falls back to Edge TTS)
 
-
-#### Step 1: Clone Project
+### Run
 
 ```bash
-git clone https://github.com/AIDC-AI/Morpheus Video Studio.git
-cd Morpheus Video Studio
-```
-
-#### Step 2: Launch Web Interface
-
-```bash
-# Run with uv (recommended, will automatically install dependencies)
+git clone https://github.com/MofaceJojo/media-studio.git
+cd media-studio
 uv run streamlit run web/app.py
 ```
 
-Browser will automatically open http://localhost:8501
+The browser opens `http://localhost:8501`; configure your LLM API and local services on the **⚙️ Settings** page.
 
-#### Step 3: Configure in Web Interface
+### Pages
 
-On first use, expand the "⚙️ System Configuration" panel and fill in:
-- **LLM Configuration**: Select AI model (such as Qwen, GPT, etc.) and enter API Key
-- **Image Configuration**: If you need to generate images, configure ComfyUI address or Local ComfyUI API Key
+| Page | Purpose |
+|---|---|
+| 🏠 Studio | Workbench home & quick create |
+| 📚 Content Library | PDFs, texts, book excerpts, quotes |
+| 🎙️ Audio Workshop | Reusable narration & voice assets |
+| 🎬 Video Workshop | Script + assets + voice → final video |
+| 🤖 Digital Human | Talking-head narration |
+| 🗂️ Asset Library | Reuse of generated assets |
+| ⚙️ Settings | LLM / ComfyUI / OmniVoice / local services |
 
-After configuration, click "Save Configuration", and you can start generating videos!
+## 📋 Recent updates
 
-<div id="tutorial-end" />
+- ✅ **2026-07 late**: recipe visual rules (no humans in knowledge channels) and evidence grading; classical vertical-text templates; BGM auto-ducking; OmniVoice→Edge fallback; resume after interruption; podcast-style talking head; subtitle newline-leak fix; title language guard
+- ✅ **2026-07 mid**: restyle workshop (filters + AI repaint + reference-image guidance); black-tail fix; OmniVoice voices in the custom-media workshop; Seedance (paid API) removed
+- ✅ **2026-07 early**: shot-pacing constraints & calm YouTube profile; final-video QA gate; SRT export; flux-schnell (GGUF) workflow; OmniVoice idle-deadlock fix; `video.py` modular refactor; GitHub Actions CI
+- ✅ **2026-07**: transitions no longer eat narration (padded tails); TTS transient-failure retry
+- ✅ **2026-06**: Morpheus rebrand; quick-create flow; style tag system; stock-first media strategy
 
-## 💻 Usage
+## 📚 Docs
 
-After opening the Web interface, you will see a three-column layout. Here's a detailed explanation of each part:
+| Doc | Contents |
+|---|---|
+| [docs/INSTALL.md](docs/INSTALL.md) | Full install guide (app / LLM key / ComfyUI + model manifest / OmniVoice) |
+| [docs/upgrade-roadmap-2026-07.md](docs/upgrade-roadmap-2026-07.md) | Roadmap and comparisons with similar projects |
+| [docs/HERMES-WORKFLOW.md](docs/HERMES-WORKFLOW.md) | Hermes delegation workflow (spec template + verification checklist) |
+| [docs/FAQ.md](docs/FAQ.md) | FAQ |
 
+## ❓ FAQ
 
-### ⚙️ System Configuration (Required on First Use)
+See [docs/FAQ.md](docs/FAQ.md). Debug order for failed renders: check `frames/*_audio.wav` first, then `frames/*_image_shot_*.png`, then `frames/*_segment.mp4`, then the concat stage and backend service logs.
 
-Configuration is required on first use. Click to expand the "⚙️ System Configuration" panel:
+## 🤝 Credits
 
-#### 1. LLM Configuration (Large Language Model)
-Used for generating video scripts.
+Built on an open-source prototype by AIDC-AI (Apache 2.0), with design inspiration from:
 
-**Quick Select Preset**  
-- Select preset model from dropdown menu (Qwen, GPT-4o, DeepSeek, etc.)
-- After selection, base_url and model will be automatically filled
-- Click "🔑 Get API Key" link to register and obtain key
-
-**Manual Configuration**  
-- API Key: Enter your key
-- Base URL: API address
-- Model: Model name
-
-#### 2. Image Configuration
-Used for generating video images.
-
-**Local Deployment (Recommended)**  
-- ComfyUI URL: Local ComfyUI service address (default http://127.0.0.1:8188)
-- Click "Test Connection" to confirm service is available
-
-**Cloud Deployment**  
-- Local ComfyUI API Key: Cloud image generation service key
-
-After configuration, click "Save Configuration".
-
-
-### 📝 Content Input (Left Column)
-
-#### Generation Mode
-- **AI Generated Content**: Input topic, AI automatically creates script
-  - Suitable for: Want to quickly generate video, let AI write script
-  - Example: "Why develop a reading habit"
-- **Fixed Script Content**: Directly input complete script, skip AI creation
-  - Suitable for: Already have ready-made script, directly generate video
-
-#### Background Music (BGM)
-- **No BGM**: Pure voice narration
-- **Built-in Music**: Select preset background music (such as default.mp3)
-- **Custom Music**: Put your music files (MP3/WAV, etc.) in the `bgm/` folder
-- Click "Preview BGM" to preview music
-
-
-### 🎤 Voice Settings (Middle Column)
-
-#### TTS Workflow
-- Select TTS workflow from dropdown menu (supports Edge-TTS, Index-TTS, etc.)
-- System will automatically scan TTS workflows in the `workflows/` folder
-- If you know ComfyUI, you can customize TTS workflows
-
-#### Reference Audio (Optional)
-- Upload reference audio file for voice cloning (supports MP3/WAV/FLAC and other formats)
-- Suitable for TTS workflows that support voice cloning (such as Index-TTS)
-- Can listen directly after upload
-
-#### Preview Function
-- Enter test text, click "Preview Voice" to listen to the effect
-- Supports using reference audio for preview
-
-
-### 🎨 Visual Settings (Middle Column)
-
-#### Image Generation
-Determine what style of images AI generates.
-
-**ComfyUI Workflow**  
-- Select image generation workflow from dropdown menu
-- Supports local deployment (selfhost) and cloud (Local ComfyUI) workflows
-- Default uses `image_flux.json`
-- If you know ComfyUI, you can put your own workflows in the `workflows/` folder
-
-**Image Dimensions**  
-- Set width and height of generated images (unit: pixels)
-- Default 1024x1024, can be adjusted as needed
-- Note: Different models have different dimension limitations
-
-**Prompt Prefix**  
-- Controls overall image style (language needs to be English)
-- Example: Minimalist black-and-white matchstick figure style illustration, clean lines, simple sketch style
-- Click "Preview Style" to test effect
-
-#### Video Template
-Determines video layout and design.
-
-**Template Naming Convention**  
-- `static_*.html`: Static templates (no AI-generated media, text-only styles)
-- `image_*.html`: Image templates (uses AI-generated images as background)
-- `video_*.html`: Video templates (uses AI-generated videos as background)
-
-**Usage**  
-- Select template from dropdown menu, displayed grouped by dimension (portrait/landscape/square)
-- Click "Preview Template" to test effect with custom parameters
-- If you know HTML, you can create your own templates in the `templates/` folder
-- 🔗 [View All Template Previews](https://aidc-ai.github.io/Morpheus Video Studio/user-guide/templates/#built-in-template-preview)
-
-
-### 🎬 Generate Video (Right Column)
-
-#### Generate Button
-- After configuring all parameters, click "🎬 Generate Video"
-- Shows real-time progress (generating script → generating images → synthesizing voice → composing video)
-- Automatically shows video preview after completion
-
-#### Progress Display
-- Shows current step in real-time
-- Example: "Frame 3/5 - Generating Image"
-
-#### Video Preview
-- Automatically plays after generation
-- Shows video duration, file size, number of frames, etc.
-- Video files are saved in the `output/` folder
-
-
-### ❓ FAQ
-
-**Q: How long does it take to use for the first time?**  
-A: Generation time depends on the number of video frames, network conditions, and AI inference speed, typically completed within a few minutes.
-
-**Q: What if I'm not satisfied with the video?**  
-A: You can try:
-1. Change LLM model (different models have different script styles)
-2. Adjust image dimensions and prompt prefix (change image style)
-3. Change TTS workflow or upload reference audio (change voice effect)
-4. Try different video templates and dimensions
-
-**Q: What about the cost?**  
-A: **This project fully supports free operation!**
-
-- **Completely Free Solution**: LLM using Ollama (local) + ComfyUI local deployment = 0 cost
-- **Recommended Solution**: LLM using Qwen (extremely low cost, highly cost-effective) + ComfyUI local deployment
-- **Cloud Solution**: LLM using OpenAI + Image using Local ComfyUI (higher cost but no need for local environment)
-
-**Selection Suggestion**: If you have a local GPU, recommend completely free solution, otherwise recommend using Qwen (cost-effective)
-
-
-## 🤝 Referenced Projects
-
-Morpheus Video Studio design is inspired by the following excellent open-source projects:
-
-- [Pixelle-MCP](https://github.com/AIDC-AI/Pixelle-MCP) - ComfyUI MCP server, allows AI assistants to directly call ComfyUI
-- [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) - Excellent video generation tool
-- [NarratoAI](https://github.com/linyqh/NarratoAI) - Film commentary automation tool
-- [MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus) - Video creation platform
-- [ComfyKit](https://github.com/puke3615/ComfyKit) - ComfyUI workflow wrapper library
-
-Thanks for the open-source spirit of these projects! 🙏
-
-
-## 💬 Community
-
-Scan the QR codes below to join our communities for latest updates and technical support:
-
-| Discord Community | WeChat Group |
-| ---- | ---- |
-| <img src="resources/discord.png" alt="Discord Community" width="250" /> | <img src="resources/wechat.png" alt="WeChat Group" width="250" /> |
-
-
-## 📢 Feedback and Support
-
-- 🐛 **Encountered Issues**: Submit [Issue](https://github.com/AIDC-AI/Morpheus Video Studio/issues)
-- 💡 **Feature Suggestions**: Submit [Feature Request](https://github.com/AIDC-AI/Morpheus Video Studio/issues)
-- ⭐ **Give a Star**: If this project helps you, feel free to give a Star for support!
-
+- [NarratoAI](https://github.com/linyqh/NarratoAI) — automated film commentary
+- [ComfyKit](https://github.com/puke3615/ComfyKit) — ComfyUI workflow wrapper
+- [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) / [OpenMontage](https://github.com/calesthio/OpenMontage) — pacing & QA ideas
 
 ## 📝 License
 
-This project is released under the Apache License 2.0. For details, please see the [LICENSE](LICENSE) file.
-
-## 📚 Research Series
-
-| Framework  | Paper  |
-|:---:|---|
-| <img src="https://github.com/HITsz-TMG/VideoClaw/blob/main/FilmAgent-pics/framework.png" width="420" alt="FilmAgent framework"/> | **[SIGGRAPH Asia 2024] FilmAgent: Automating Virtual Film Production Through a Multi-Agent Collaborative Framework**<br>*Zhenran Xu, Longyue Wang, Jifang Wang, Zhouyi Li, Senbao Shi, Xue Yang, Yiyu Wang, Baotian Hu, Jun Yu, Min Zhang*<br>[[Paper](https://arxiv.org/pdf/2501.12909)] [[GitHub](https://github.com/HITsz-TMG/VideoClaw/blob/main/FilmAgent)] |
-| <img src="https://github.com/AIDC-AI/ComfyUI-Copilot/blob/main/assets/Framework-v3.png" width="420" alt="Anim-Director result"/> | **[ACL 2025] ComfyUI-Copilot: An Intelligent Assistant for Automated Workflow Development**<br>*Zhenran Xu, Xue Yang, Yiyu Wang, Qingli Hu, Zijiao Wu, Longyue Wang, Weihua Luo, Kaifu Zhang, Baotian Hu, Min Zhang*<br>[[Paper](https://aclanthology.org/2025.acl-demo.61/)] [[GitHub](https://github.com/AIDC-AI/ComfyUI-Copilot)] |
-| <img src="https://raw.githubusercontent.com/HITsz-TMG/Anim-Director/main/AniMaker/assets/pipeline.png" width="420" alt="AniMaker pipeline"/> | **[SIGGRAPH Asia 2025] AniMaker: Multi-Agent Animated Storytelling with MCTS-Driven Clip Generation**<br>*Haoyuan Shi, Yunxin Li, Xinyu Chen, Longyue Wang, Baotian Hu, Min Zhang*<br>[[Paper](https://doi.org/10.1145/3757377.3764009)] [[GitHub](https://github.com/HITsz-TMG/Anim-Director/tree/main/AniMaker)] |
-
-
-## ⭐ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=AIDC-AI/Morpheus Video Studio&type=Date)](https://star-history.com/#AIDC-AI/Morpheus Video Studio&Date)
-
+Apache 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).

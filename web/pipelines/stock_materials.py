@@ -4,8 +4,8 @@ from typing import Any
 
 import streamlit as st
 
-from pixelle_video.config import config_manager
-from pixelle_video.services.moneyprinter_tools import download_material, material_to_dicts, search_stock_materials
+from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.services.stock_publish_tools import download_material, material_to_dicts, search_stock_materials
 from web.pipelines.base import PipelineUI, register_pipeline_ui
 from web.utils.async_helpers import run_async
 
@@ -14,9 +14,9 @@ class StockMaterialsPipelineUI(PipelineUI):
     name = "stock_materials"
     display_name = "素材库"
     icon = "🎞️"
-    description = "MoneyPrinterTurbo 风格的 Pexels / Pixabay 免费视频素材检索与下载。"
+    description = "Pexels / Pixabay 免费视频素材检索与下载。"
 
-    def render(self, pixelle_video: Any):
+    def render(self, morpheus_video_studio: Any):
         stock_config = config_manager.get_stock_materials_config()
         provider_options = ["all", "pexels", "pixabay"]
         provider_labels = {

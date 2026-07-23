@@ -23,26 +23,26 @@ from loguru import logger
 
 from web.i18n import tr, get_language
 from web.utils.async_helpers import run_async
-from pixelle_video.models.progress import ProgressEvent
-from pixelle_video.config import config_manager
-from pixelle_video.utils.omnivoice_util import check_omnivoice_health
-from pixelle_video.utils.comfyui_util import check_comfyui_health
+from morpheus_video_studio.models.progress import ProgressEvent
+from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.utils.omnivoice_util import check_omnivoice_health
+from morpheus_video_studio.utils.comfyui_util import check_comfyui_health
 
 
-def render_output_preview(pixelle_video, video_params):
+def render_output_preview(morpheus_video_studio, video_params):
     """Render output preview section (right column)"""
     # Check if batch mode
     is_batch = video_params.get("batch_mode", False)
     
     if is_batch:
         # Batch generation mode
-        render_batch_output(pixelle_video, video_params)
+        render_batch_output(morpheus_video_studio, video_params)
     else:
         # Single video generation mode (original logic)
-        render_single_output(pixelle_video, video_params)
+        render_single_output(morpheus_video_studio, video_params)
 
 
-def render_single_output(pixelle_video, video_params):
+def render_single_output(morpheus_video_studio, video_params):
     """Render single video generation output (original logic, unchanged)"""
     # Extract parameters from video_params dict
     text = video_params.get("text", "")
@@ -65,6 +65,7 @@ def render_single_output(pixelle_video, video_params):
     workflow_key = video_params.get("media_workflow")
     media_strategy = video_params.get("media_strategy")
     prompt_prefix = video_params.get("prompt_prefix", "")
+    ai_script_draft = (video_params.get("ai_script_draft") or "").strip()
 
     if not text and "quick_create_text_input" in st.session_state:
         text = st.session_state.get("quick_create_text_input", "")
@@ -79,6 +80,8 @@ def render_single_output(pixelle_video, video_params):
             st.warning(tr("settings.not_configured"))
         
         # Generate Button
+        if ai_script_draft and mode in ("generate", "document"):
+            st.caption("将优先使用上面编辑过的 AI 文案草稿生成视频。若要重新自动写文案，请先清空草稿。")
         if st.button(tr("btn.generate"), type="primary", use_container_width=True):
             # Validate system configuration
             if not config_manager.validate():
@@ -104,6 +107,10 @@ def render_single_output(pixelle_video, video_params):
                 if not comfy_ok:
                     st.warning(f"{comfy_msg} 将自动改用全部素材源（Pexels + Pixabay）。")
                     workflow_key = "stock/all"
+
+            effective_text = ai_script_draft if ai_script_draft and mode in ("generate", "document") else text
+            effective_mode = "fixed" if ai_script_draft and mode in ("generate", "document") else mode
+            effective_split_mode = "line" if effective_mode == "fixed" and ai_script_draft else split_mode
             
             # Show progress
             progress_bar = st.progress(0)
@@ -150,11 +157,11 @@ def render_single_output(pixelle_video, video_params):
                 # Generate video (directly pass parameters)
                 # Note: media_width and media_height are auto-determined from template
                 gen_params = {
-                    "text": text,
-                    "mode": mode,
+                    "text": effective_text,
+                    "mode": effective_mode,
                     "title": title if title else None,
                     "n_scenes": n_scenes,
-                    "split_mode": split_mode,
+                    "split_mode": effective_split_mode,
                     "media_workflow": workflow_key,
                     "media_strategy": media_strategy,
                     "frame_template": frame_template,
@@ -165,6 +172,36 @@ def render_single_output(pixelle_video, video_params):
                     "media_width": st.session_state.get('template_media_width'),
                     "media_height": st.session_state.get('template_media_height'),
                 }
+
+                for key in (
+                    "stock_selection_mode",
+                    "transition_mode",
+                    "transition_choices",
+                    "transition_duration",
+                    "min_segment_duration",
+                    "scene_trailing_silence",
+                    "image_motion_mode",
+                    "image_motion_choices",
+                    "max_narration_words",
+                    "subtitle_customization_enabled",
+                    "subtitle_enabled",
+                    "subtitle_font",
+                    "subtitle_position",
+                    "subtitle_color",
+                    "subtitle_size",
+                    "subtitle_stroke_color",
+                    "subtitle_stroke_width",
+                ):
+                    if key in video_params:
+                        gen_params[key] = video_params[key]
+
+                # Video settings may override the selected template's media size.
+                gen_params["media_width"] = video_params.get(
+                    "media_width", st.session_state.get("template_media_width")
+                )
+                gen_params["media_height"] = video_params.get(
+                    "media_height", st.session_state.get("template_media_height")
+                )
                 
                 # Add TTS parameters based on mode
                 gen_params["tts_inference_mode"] = tts_mode
@@ -182,7 +219,7 @@ def render_single_output(pixelle_video, video_params):
                 if custom_values_for_video:
                     gen_params["template_params"] = custom_values_for_video
                 
-                result = run_async(pixelle_video.generate_video(**gen_params))
+                result = run_async(morpheus_video_studio.generate_video(**gen_params))
                 
                 # Calculate total generation time
                 total_generation_time = time.time() - start_time
@@ -199,7 +236,7 @@ def render_single_output(pixelle_video, video_params):
                 file_size_mb = result.file_size / (1024 * 1024)
                 
                 # Parse video size from template path
-                from pixelle_video.utils.template_util import parse_template_size, resolve_template_path
+                from morpheus_video_studio.utils.template_util import parse_template_size, resolve_template_path
                 template_path = resolve_template_path(result.storyboard.config.frame_template)
                 video_width, video_height = parse_template_size(template_path)
                 
@@ -239,7 +276,7 @@ def render_single_output(pixelle_video, video_params):
                 st.stop()
 
 
-def render_batch_output(pixelle_video, video_params):
+def render_batch_output(morpheus_video_studio, video_params):
     """Render batch generation output (minimal, redirect to History)"""
     topics = video_params.get("topics", [])
     
@@ -247,7 +284,7 @@ def render_batch_output(pixelle_video, video_params):
         st.markdown(f"**{tr('batch.section_generation')}**")
         
         # Check if topics are provided
-        if not topics:
+        if not topics or not any(str(topic).strip() for topic in topics):
             st.warning(tr("batch.no_topics"))
             return
         
@@ -274,6 +311,9 @@ def render_batch_output(pixelle_video, video_params):
         ):
             # Prepare shared config
             shared_config = {
+                "mode": video_params.get("mode") or "generate",
+                "split_mode": video_params.get("split_mode") or "paragraph",
+                "title": video_params.get("title"),
                 "title_prefix": video_params.get("title_prefix"),
                 "n_scenes": video_params.get("n_scenes") or 5,
                 "media_workflow": video_params.get("media_workflow"),
@@ -285,6 +325,29 @@ def render_batch_output(pixelle_video, video_params):
                 "media_width": video_params.get("media_width"),
                 "media_height": video_params.get("media_height"),
             }
+
+            for key in (
+                "media_strategy",
+                "stock_selection_mode",
+                "transition_mode",
+                "transition_choices",
+                "transition_duration",
+                "min_segment_duration",
+                "scene_trailing_silence",
+                "image_motion_mode",
+                "image_motion_choices",
+                "max_narration_words",
+                "subtitle_customization_enabled",
+                "subtitle_enabled",
+                "subtitle_font",
+                "subtitle_position",
+                "subtitle_color",
+                "subtitle_size",
+                "subtitle_stroke_color",
+                "subtitle_stroke_width",
+            ):
+                if key in video_params:
+                    shared_config[key] = video_params[key]
             
             # Add TTS parameters based on mode (only add non-None values)
             if shared_config["tts_inference_mode"] in ("local", "omnivoice"):
@@ -370,7 +433,7 @@ def render_batch_output(pixelle_video, video_params):
             start_time = time.time()
             
             batch_result = batch_manager.execute_batch(
-                pixelle_video=pixelle_video,
+                morpheus_video_studio=morpheus_video_studio,
                 topics=topics,
                 shared_config=shared_config,
                 overall_progress_callback=update_overall_progress,

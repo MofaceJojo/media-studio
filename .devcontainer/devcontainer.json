@@ -1,5 +1,5 @@
 {
-  "name": "Pixelle-Video Codespace",
+  "name": "Morpheus Video Studio Codespace",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11",
   "forwardPorts": [8501],
   "postCreateCommand": ".devcontainer/postCreate.sh",

@@ -39,15 +39,15 @@ def init_i18n():
     set_language(st.session_state.language)
 
 
-def get_pixelle_video():
+def get_morpheus_video_studio():
     """
-    Get initialized Pixelle-Video instance with proper caching and cleanup
+    Get initialized Morpheus Video Studio instance with proper caching and cleanup
     
     Uses st.session_state to cache the instance per user session.
     ComfyKit is lazily initialized and automatically recreated on config changes.
     """
-    from pixelle_video.service import PixelleVideoCore
-    from pixelle_video.config import config_manager
+    from morpheus_video_studio.service import MorpheusVideoStudioCore
+    from morpheus_video_studio.config import config_manager
     
     # Compute config hash for change detection
     import hashlib
@@ -59,31 +59,31 @@ def get_pixelle_video():
     
     # Check if we need to create or recreate core instance
     need_recreate = False
-    if 'pixelle_video' not in st.session_state:
+    if 'morpheus_video_studio' not in st.session_state:
         need_recreate = True
-        logger.info("Creating new PixelleVideoCore instance (first time)")
-    elif st.session_state.get('pixelle_video_config_hash') != config_hash:
+        logger.info("Creating new MorpheusVideoStudioCore instance (first time)")
+    elif st.session_state.get('morpheus_video_studio_config_hash') != config_hash:
         need_recreate = True
-        logger.info("Configuration changed, recreating PixelleVideoCore instance")
+        logger.info("Configuration changed, recreating MorpheusVideoStudioCore instance")
         # Cleanup old instance
-        old_core = st.session_state.pixelle_video
+        old_core = st.session_state.morpheus_video_studio
         try:
             run_async(old_core.cleanup())
         except Exception as e:
-            logger.warning(f"Failed to cleanup old PixelleVideoCore: {e}")
+            logger.warning(f"Failed to cleanup old MorpheusVideoStudioCore: {e}")
     
     if need_recreate:
         # Create and initialize new instance
-        pixelle_video = PixelleVideoCore()
-        run_async(pixelle_video.initialize())
+        morpheus_video_studio = MorpheusVideoStudioCore()
+        run_async(morpheus_video_studio.initialize())
         
         # Cache in session state
-        st.session_state.pixelle_video = pixelle_video
-        st.session_state.pixelle_video_config_hash = config_hash
-        logger.info("✅ PixelleVideoCore initialized and cached")
+        st.session_state.morpheus_video_studio = morpheus_video_studio
+        st.session_state.morpheus_video_studio_config_hash = config_hash
+        logger.info("✅ MorpheusVideoStudioCore initialized and cached")
     else:
-        pixelle_video = st.session_state.pixelle_video
-        logger.debug("Reusing cached PixelleVideoCore instance")
+        morpheus_video_studio = st.session_state.morpheus_video_studio
+        logger.debug("Reusing cached MorpheusVideoStudioCore instance")
     
-    return pixelle_video
+    return morpheus_video_studio
 

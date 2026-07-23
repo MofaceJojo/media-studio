@@ -4,7 +4,7 @@ from typing import Any
 
 import streamlit as st
 
-from pixelle_video.services.moneyprinter_tools import (
+from morpheus_video_studio.services.stock_publish_tools import (
     create_publish_queue,
     format_platform,
     get_platform_options,
@@ -17,9 +17,9 @@ class PublishPipelineUI(PipelineUI):
     name = "auto_publish"
     display_name = "全平台发布"
     icon = "🚀"
-    description = "MoneyPrinterPlus 风格的短视频发布队列，支持国内外平台并预留发布适配器。"
+    description = "短视频发布队列，支持国内外平台入口并预留发布适配器。"
 
-    def render(self, pixelle_video: Any):
+    def render(self, morpheus_video_studio: Any):
         platform_registry = get_publish_platforms()
         platform_options = get_platform_options()
         default_platforms = ["douyin", "kuaishou", "xiaohongshu", "shipinhao", "bilibili", "youtube", "x"]
@@ -28,7 +28,7 @@ class PublishPipelineUI(PipelineUI):
         with left:
             with st.container(border=True):
                 st.markdown("**发布内容**")
-                content_dir = st.text_input("视频内容目录", value="output/moneyprinter_plus", key="publish_content_dir")
+                content_dir = st.text_input("视频内容目录", value="output", key="publish_content_dir")
                 platforms = st.multiselect(
                     "发布平台",
                     platform_options,
