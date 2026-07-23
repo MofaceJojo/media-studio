@@ -28,6 +28,13 @@ Morpheus Video Studio chains **content input, audio generation, video generation
 - ✅ **Local style presets** — photoreal / hand-drawn fantasy / eastern classical / cyberpunk / picture-book, all on local models
 - ✅ **Workshop architecture** — content library, audio workshop, video workshop, digital human, asset library
 - ✅ **Flexible aspect ratios** — 9:16 (Shorts/Douyin), 16:9 (YouTube), 1:1
+- ✅ **Content recipes** — science / TCM / ranking / medical skeletons that pin script structure instead of drifting into life-insight chatter
+- ✅ **No-human visual rules** — knowledge channels steer imagery to herbs, vessels, classical texts and fields, since local models mangle people
+- ✅ **Classical text frames** — quotations are typeset from real characters, never drawn by AI (which produces gibberish)
+- ✅ **BGM auto-ducking** — music dips under narration and swells back in the gaps
+- ✅ **TTS auto-fallback** — an OmniVoice failure degrades to Edge TTS for that segment instead of failing the render
+- ✅ **Resume** — an interrupted render reuses finished frames and only rebuilds the missing tail
+- ✅ **Restyle workshop** — filter presets (instant) or AI repaint into animation styles, with optional reference-image guidance
 
 ## 📊 Pipeline
 
@@ -74,9 +81,20 @@ The browser opens `http://localhost:8501`; configure your LLM API and local serv
 
 ## 📋 Recent updates
 
-- ✅ **2026-07**: shot-pacing constraints & calm YouTube profile; final-video QA gate; SRT export; flux-schnell (GGUF) workflow; OmniVoice idle-deadlock fix; `video.py` modular refactor; GitHub Actions CI
+- ✅ **2026-07 late**: recipe visual rules (no humans in knowledge channels) and evidence grading; classical vertical-text templates; BGM auto-ducking; OmniVoice→Edge fallback; resume after interruption; podcast-style talking head; subtitle newline-leak fix; title language guard
+- ✅ **2026-07 mid**: restyle workshop (filters + AI repaint + reference-image guidance); black-tail fix; OmniVoice voices in the custom-media workshop; Seedance (paid API) removed
+- ✅ **2026-07 early**: shot-pacing constraints & calm YouTube profile; final-video QA gate; SRT export; flux-schnell (GGUF) workflow; OmniVoice idle-deadlock fix; `video.py` modular refactor; GitHub Actions CI
 - ✅ **2026-07**: transitions no longer eat narration (padded tails); TTS transient-failure retry
 - ✅ **2026-06**: Morpheus rebrand; quick-create flow; style tag system; stock-first media strategy
+
+## 📚 Docs
+
+| Doc | Contents |
+|---|---|
+| [docs/INSTALL.md](docs/INSTALL.md) | Full install guide (app / LLM key / ComfyUI + model manifest / OmniVoice) |
+| [docs/upgrade-roadmap-2026-07.md](docs/upgrade-roadmap-2026-07.md) | Roadmap and comparisons with similar projects |
+| [docs/HERMES-WORKFLOW.md](docs/HERMES-WORKFLOW.md) | Hermes delegation workflow (spec template + verification checklist) |
+| [docs/FAQ.md](docs/FAQ.md) | FAQ |
 
 ## ❓ FAQ
 
