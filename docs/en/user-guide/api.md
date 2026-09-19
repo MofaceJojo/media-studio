@@ -1,22 +1,22 @@
 # API Usage
 
-Pixelle-Video provides a complete Python API for easy integration into your projects.
+Morpheus Video Studio provides a complete Python API for easy integration into your projects.
 
 ---
 
 ## Quick Start
 
 ```python
-from pixelle_video.service import PixelleVideoCore
+from morpheus_video_studio.service import MorpheusVideoStudioCore
 import asyncio
 
 async def main():
     # Initialize
-    pixelle = PixelleVideoCore()
-    await pixelle.initialize()
+    morpheus = MorpheusVideoStudioCore()
+    await morpheus.initialize()
     
     # Generate video
-    result = await pixelle.generate_video(
+    result = await morpheus.generate_video(
         text="Why develop a reading habit",
         mode="generate",
         n_scenes=5

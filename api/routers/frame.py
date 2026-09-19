@@ -17,10 +17,10 @@ Frame/Template rendering endpoints
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from api.dependencies import PixelleVideoDep
+from api.dependencies import MorpheusVideoStudioDep
 from api.schemas.frame import FrameRenderRequest, FrameRenderResponse, TemplateParamsResponse
-from pixelle_video.services.frame_html import HTMLFrameGenerator
-from pixelle_video.utils.template_util import parse_template_size, resolve_template_path
+from morpheus_video_studio.services.frame_html import HTMLFrameGenerator
+from morpheus_video_studio.utils.template_util import parse_template_size, resolve_template_path
 
 router = APIRouter(prefix="/frame", tags=["Frame Rendering"])
 
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/frame", tags=["Frame Rendering"])
 @router.post("/render", response_model=FrameRenderResponse)
 async def render_frame(
     request: FrameRenderRequest,
-    pixelle_video: PixelleVideoDep
+    morpheus_video_studio: MorpheusVideoStudioDep
 ):
     """
     Render a single frame using HTML template

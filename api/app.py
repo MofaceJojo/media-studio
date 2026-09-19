@@ -11,7 +11,7 @@
 # limitations under the License.
 
 """
-Pixelle-Video FastAPI Application
+Morpheus Video Studio FastAPI Application
 
 Main FastAPI app with all routers and middleware.
 
@@ -40,7 +40,7 @@ from loguru import logger
 
 from api.config import api_config
 from api.tasks import task_manager
-from api.dependencies import shutdown_pixelle_video
+from api.dependencies import shutdown_morpheus_video_studio
 
 # Import routers
 from api.routers import (
@@ -65,24 +65,24 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events.
     """
     # Startup
-    logger.info("🚀 Starting Pixelle-Video API...")
+    logger.info("🚀 Starting Morpheus Video Studio API...")
     await task_manager.start()
-    logger.info("✅ Pixelle-Video API started successfully\n")
+    logger.info("✅ Morpheus Video Studio API started successfully\n")
     
     yield
     
     # Shutdown
-    logger.info("🛑 Shutting down Pixelle-Video API...")
+    logger.info("🛑 Shutting down Morpheus Video Studio API...")
     await task_manager.stop()
-    await shutdown_pixelle_video()
-    logger.info("✅ Pixelle-Video API shutdown complete")
+    await shutdown_morpheus_video_studio()
+    logger.info("✅ Morpheus Video Studio API shutdown complete")
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="Pixelle-Video API",
+    title="Morpheus Video Studio API",
     description="""
-    ## Pixelle-Video - AI Video Generation Platform API
+    ## Morpheus Video Studio - AI Video Generation Platform API
     
     ### Features
     - 🤖 **LLM**: Large language model integration
@@ -139,7 +139,7 @@ app.include_router(frame_router, prefix=api_config.api_prefix)
 async def root():
     """Root endpoint with API information"""
     return {
-        "service": "Pixelle-Video API",
+        "service": "Morpheus Video Studio API",
         "version": "0.1.0",
         "docs": api_config.docs_url,
         "health": "/health",
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     import uvicorn
     
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Start Pixelle-Video API Server")
+    parser = argparse.ArgumentParser(description="Start Morpheus Video Studio API Server")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     # Print startup banner
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
-║                    Pixelle-Video API Server                      ║
+║                    Morpheus Video Studio API Server                      ║
 ╚══════════════════════════════════════════════════════════════╝
 
 Starting server at http://{args.host}:{args.port}

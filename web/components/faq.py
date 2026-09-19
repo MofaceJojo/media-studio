@@ -120,25 +120,13 @@ def render_faq_sidebar():
         faq_content = load_faq_content(current_language)
         
         if faq_content:
-            # Display FAQ in an expander, expanded by default
-            with st.expander(tr('faq.expand_to_view', fallback='FAQ'), expanded=True):
+            # Keep help available without dominating the lightweight workspace.
+            with st.expander(tr('faq.expand_to_view', fallback='FAQ'), expanded=False):
                 # Parse FAQ into sections
                 sections = parse_faq_sections(faq_content)
                 
-                # Display each question in its own collapsible expander
+                # Streamlit does not support nested expanders, so keep the FAQ
+                # itself collapsible and render each question as a heading.
                 for question, answer in sections:
-                    with st.expander(question, expanded=False):
-                        st.markdown(answer, unsafe_allow_html=True)
-            
-            # Add a link to GitHub issues for more help
-            st.markdown(
-                f"💡 {tr('faq.more_help', fallback='Need more help?')} "
-                f"[GitHub Issues](https://github.com/AIDC-AI/Morpheus Video Studio/issues)"
-            )
-        else:
-            # If FAQ cannot be loaded, only show the GitHub link
-            st.markdown(f"### 💡 {tr('faq.more_help', fallback='Need help?')}")
-            st.markdown(
-                f"[GitHub Issues](https://github.com/AIDC-AI/Morpheus Video Studio/issues) | "
-                f"[Documentation](https://aidc-ai.github.io/Morpheus Video Studio)"
-            )
+                    st.markdown(f"**{question}**")
+                    st.markdown(answer, unsafe_allow_html=True)

@@ -2,7 +2,7 @@
 
 # Package information
 package:
-  name: Pixelle-Video
+  name: Morpheus Video Studio
   version_source: pyproject.toml  # Read version from pyproject.toml
   architecture: win64
   

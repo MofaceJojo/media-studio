@@ -29,12 +29,12 @@ class PipelineUI:
     icon: str = "🔌"
     description: str = ""
     
-    def render(self, pixelle_video: Any):
+    def render(self, morpheus_video_studio: Any):
         """
         Render the full page content for this pipeline (below settings).
         
         Args:
-            pixelle_video: The initialized PixelleVideoCore instance.
+            morpheus_video_studio: The initialized MorpheusVideoStudioCore instance.
         """
         raise NotImplementedError
 

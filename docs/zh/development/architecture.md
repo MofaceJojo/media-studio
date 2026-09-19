@@ -1,12 +1,12 @@
 # 架构设计
 
-Pixelle-Video 的技术架构概览。
+Morpheus Video Studio 的技术架构概览。
 
 ---
 
 ## 核心架构
 
-Pixelle-Video 采用分层架构设计：
+Morpheus Video Studio 采用分层架构设计：
 
 - **Web 层**: Streamlit Web 界面
 - **服务层**: 核心业务逻辑
@@ -16,7 +16,7 @@ Pixelle-Video 采用分层架构设计：
 
 ## 主要组件
 
-### PixelleVideoCore
+### MorpheusVideoStudioCore
 
 核心服务类，协调各个子服务。
 

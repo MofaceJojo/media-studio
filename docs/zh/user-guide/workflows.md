@@ -6,7 +6,7 @@
 
 ## 工作流简介
 
-Pixelle-Video 基于 ComfyUI 架构，支持自定义工作流。
+Morpheus Video Studio 基于 ComfyUI 架构，支持自定义工作流。
 
 ---
 

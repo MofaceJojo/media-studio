@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul 2>&1
 
-echo 🚀 Starting Pixelle-Video Web UI...
+echo 🚀 Starting Morpheus Video Studio Web UI...
 echo.
 
 set "PATH=%~dp0tools\ffmpeg\bin;%PATH%"
@@ -20,7 +20,7 @@ if errorlevel 1 (
     echo   For Regular Users:
     echo ========================================
     echo Please download the ONE-CLICK PACKAGE from:
-    echo https://github.com/AIDC-AI/Pixelle-Video/releases
+    echo https://github.com/MofaceJojo/morpheus-video-studio/releases
     echo.
     echo The one-click package includes:
     echo   ✓ Pre-configured Python environment

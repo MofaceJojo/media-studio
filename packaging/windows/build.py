@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Windows Package Builder for Pixelle-Video
+Windows Package Builder for Morpheus Video Studio
 
 This script automates the creation of a Windows portable package:
 1. Downloads Python embedded distribution
@@ -48,7 +48,7 @@ class Color:
 
 
 class WindowsPackageBuilder:
-    """Build Windows portable package for Pixelle-Video"""
+    """Build Windows portable package for Morpheus Video Studio"""
     
     def __init__(self, config_path: str, output_dir: Optional[str] = None, use_cn_mirror: bool = False):
         self.config_path = Path(config_path)
@@ -635,7 +635,7 @@ class WindowsPackageBuilder:
                 self.install_dependencies(python_dir)
             
             # Copy project files
-            project_target = self.build_dir / "Pixelle-Video"
+            project_target = self.build_dir / "Morpheus Video Studio"
             self.copy_project_files(project_target)
             
             # Generate launcher scripts
@@ -660,7 +660,7 @@ class WindowsPackageBuilder:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build Windows portable package for Pixelle-Video")
+    parser = argparse.ArgumentParser(description="Build Windows portable package for Morpheus Video Studio")
     parser.add_argument(
         '--config',
         default='packaging/windows/config/build_config.yaml',

@@ -1,20 +1,20 @@
 # API Overview
 
-Pixelle-Video provides both Python SDK and HTTP REST API.
+Morpheus Video Studio provides both Python SDK and HTTP REST API.
 
 ---
 
 ## Python SDK
 
-### PixelleVideoCore
+### MorpheusVideoStudioCore
 
 Main service class providing video generation functionality.
 
 ```python
-from pixelle_video.service import PixelleVideoCore
+from morpheus_video_studio.service import MorpheusVideoStudioCore
 
-pixelle = PixelleVideoCore()
-await pixelle.initialize()
+morpheus = MorpheusVideoStudioCore()
+await morpheus.initialize()
 ```
 
 ### generate_video()

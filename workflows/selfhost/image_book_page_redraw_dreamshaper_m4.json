@@ -124,7 +124,7 @@
   "9": {
     "class_type": "SaveImage",
     "inputs": {
-      "filename_prefix": "pixelle_book_redraw",
+      "filename_prefix": "morpheus_book_redraw",
       "images": [
         "8",
         0

@@ -1,6 +1,6 @@
 # Installation
 
-This page will guide you through installing Pixelle-Video.
+This page will guide you through installing Morpheus Video Studio.
 
 ---
 
@@ -25,7 +25,7 @@ This page will guide you through installing Pixelle-Video.
 
 ### Download and Install
 
-1. Visit [GitHub Releases](https://github.com/AIDC-AI/Pixelle-Video/releases/latest) to download the latest version
+1. Visit [GitHub Releases](https://github.com/MofaceJojo/morpheus-video-studio/releases/latest) to download the latest version
 2. Download the latest Windows All-in-One Package and extract it to any directory
 3. Double-click `start.bat` to launch the Web interface
 4. Your browser will automatically open `http://localhost:8501`
@@ -43,8 +43,8 @@ This page will guide you through installing Pixelle-Video.
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/AIDC-AI/Pixelle-Video.git
-cd Pixelle-Video
+git clone https://github.com/MofaceJojo/morpheus-video-studio.git
+cd Morpheus Video Studio
 ```
 
 ### Step 2: Install Dependencies
@@ -92,7 +92,7 @@ uv run streamlit run web/app.py
 streamlit run web/app.py
 ```
 
-Your browser should automatically open `http://localhost:8501` and display the Pixelle-Video web interface.
+Your browser should automatically open `http://localhost:8501` and display the Morpheus Video Studio web interface.
 
 !!! success "Installation Successful!"
     If you can see the web interface, the installation was successful! Next, check out the [Configuration Guide](configuration.md) to set up your services.

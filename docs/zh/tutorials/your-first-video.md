@@ -1,6 +1,6 @@
 # 生成你的第一个视频
 
-手把手教你使用 Pixelle-Video 生成第一个视频。
+手把手教你使用 Morpheus Video Studio 生成第一个视频。
 
 ---
 

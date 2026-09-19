@@ -1,20 +1,20 @@
 # API 概览
 
-Pixelle-Video 提供 Python SDK 和 HTTP REST API 两种方式。
+Morpheus Video Studio 提供 Python SDK 和 HTTP REST API 两种方式。
 
 ---
 
 ## Python SDK
 
-### PixelleVideoCore
+### MorpheusVideoStudioCore
 
 主要服务类，提供视频生成功能。
 
 ```python
-from pixelle_video.service import PixelleVideoCore
+from morpheus_video_studio.service import MorpheusVideoStudioCore
 
-pixelle = PixelleVideoCore()
-await pixelle.initialize()
+morpheus = MorpheusVideoStudioCore()
+await morpheus.initialize()
 ```
 
 ### generate_video()

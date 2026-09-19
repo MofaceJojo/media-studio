@@ -17,7 +17,7 @@ LLM (Large Language Model) endpoints
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from api.dependencies import PixelleVideoDep
+from api.dependencies import MorpheusVideoStudioDep
 from api.schemas.llm import LLMChatRequest, LLMChatResponse
 
 router = APIRouter(prefix="/llm", tags=["Basic Services"])
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/llm", tags=["Basic Services"])
 @router.post("/chat", response_model=LLMChatResponse)
 async def llm_chat(
     request: LLMChatRequest,
-    pixelle_video: PixelleVideoDep
+    morpheus_video_studio: MorpheusVideoStudioDep
 ):
     """
     LLM chat endpoint
@@ -43,7 +43,7 @@ async def llm_chat(
         logger.info(f"LLM chat request: {request.prompt[:50]}...")
         
         # Call LLM service
-        response = await pixelle_video.llm(
+        response = await morpheus_video_studio.llm(
             prompt=request.prompt,
             temperature=request.temperature,
             max_tokens=request.max_tokens

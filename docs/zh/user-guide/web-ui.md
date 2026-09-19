@@ -1,6 +1,6 @@
 # Web 界面使用指南
 
-详细介绍 Pixelle-Video Web 界面的各项功能。
+详细介绍 Morpheus Video Studio Web 界面的各项功能。
 
 ---
 

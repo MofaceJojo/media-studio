@@ -18,7 +18,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from web.i18n import tr
-from pixelle_video.config import config_manager
+from morpheus_video_studio.config import config_manager
 
 
 def safe_rerun():

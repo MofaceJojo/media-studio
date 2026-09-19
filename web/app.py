@@ -28,33 +28,21 @@ if str(_project_root) not in sys.path:
 
 import streamlit as st
 
+from web.navigation import build_streamlit_pages, render_tool_drawer
+
 # Setup page config (must be first Streamlit command)
 st.set_page_config(
-    page_title="Morpheus Video Studio - AI Video Generator",
+    page_title="Media Studio",
     page_icon="🎬",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 
 def main():
     """Main entry point with navigation"""
-    # Define pages using st.Page
-    home_page = st.Page(
-        "pages/1_🎬_Home.py",
-        title="Home",
-        icon="🎬",
-        default=True
-    )
-    
-    history_page = st.Page(
-        "pages/2_📚_History.py",
-        title="History",
-        icon="📚"
-    )
-    
-    # Set up navigation and run
-    pg = st.navigation([home_page, history_page])
+    pg = st.navigation(build_streamlit_pages(), position="hidden")
+    render_tool_drawer()
     pg.run()
 
 

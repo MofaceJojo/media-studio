@@ -1,6 +1,6 @@
 # Windows Package Builder
 
-Automated build system for creating Windows portable packages of Pixelle-Video.
+Automated build system for creating Windows portable packages of Morpheus Video Studio.
 
 ## Quick Start
 
@@ -39,18 +39,18 @@ The build process creates:
 
 ```
 dist/windows/
-├── Pixelle-Video-v*-win64/             # Build directory (version number varies)
+├── Morpheus Video Studio-v*-win64/             # Build directory (version number varies)
 │   ├── python/                         # Python embedded
 │   ├── tools/                          # FFmpeg, etc.
-│   ├── Pixelle-Video/                  # Project files
+│   ├── Morpheus Video Studio/                  # Project files
 │   ├── data/                           # User data (empty)
 │   ├── output/                         # Output (empty)
 │   ├── start.bat                       # Main launcher
 │   ├── start_api.bat                   # API launcher
 │   ├── start_web.bat                   # Web launcher
 │   └── README.txt                      # User guide
-├── Pixelle-Video-v*-win64.zip          # ZIP package (version number varies)
-└── Pixelle-Video-v*-win64.zip.sha256   # Checksum (version number varies)
+├── Morpheus Video Studio-v*-win64.zip          # ZIP package (version number varies)
+└── Morpheus Video Studio-v*-win64.zip.sha256   # Checksum (version number varies)
 ```
 
 ## Build Process
@@ -205,12 +205,12 @@ Users verify download:
 
 ```bash
 # Windows PowerShell
-Get-FileHash Pixelle-Video-v*-win64.zip -Algorithm SHA256
+Get-FileHash Morpheus Video Studio-v*-win64.zip -Algorithm SHA256
 ```
 
 Compare with `.sha256` file.
 
 ## License
 
-Same as Pixelle-Video project license.
+Same as Morpheus Video Studio project license.
 

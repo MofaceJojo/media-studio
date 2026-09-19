@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in contributing to Pixelle-Video!
+Thank you for your interest in contributing to Morpheus Video Studio!
 
 ---
 
@@ -18,8 +18,8 @@ Thank you for your interest in contributing to Pixelle-Video!
 
 ```bash
 # Clone your fork
-git clone https://github.com/your-username/Pixelle-Video.git
-cd Pixelle-Video
+git clone https://github.com/your-username/Morpheus Video Studio.git
+cd Morpheus Video Studio
 
 # Install development dependencies
 uv sync
@@ -40,7 +40,7 @@ pytest
 
 ## Submit Issues
 
-Having problems or feature suggestions? Please submit at [GitHub Issues](https://github.com/AIDC-AI/Pixelle-Video/issues).
+Having problems or feature suggestions? Please submit at [GitHub Issues](https://github.com/MofaceJojo/morpheus-video-studio/issues).
 
 ---
 

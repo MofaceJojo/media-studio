@@ -43,8 +43,13 @@ Thumbs.db
 # Config files with sensitive data
 config.yaml
 config.yaml.bak
+config.yaml.bak-*
+config.yaml.bak.*
 *.yaml.bak
+*.yaml.bak-*
 .env
+.env.*
+!.env.example
 
 # Logs
 *.log
@@ -55,6 +60,7 @@ test_outputs/
 *.wav
 *.bak
 test_*.py
+!tests/test_*.py
 
 !bgm/default.mp3
 
@@ -74,3 +80,8 @@ examples/
 repositories/
 
 *.out
+
+node_modules/
+
+# Hermes/一次性生成脚本(含本机绝对路径,不入库)
+scripts/

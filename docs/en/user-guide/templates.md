@@ -6,7 +6,7 @@ How to create custom video templates.
 
 ## Template Introduction
 
-Video templates use HTML to define the layout and style of video frames. Pixelle-Video provides multiple preset templates covering different video dimensions and style requirements.
+Video templates use HTML to define the layout and style of video frames. Morpheus Video Studio provides multiple preset templates covering different video dimensions and style requirements.
 
 ---
 
@@ -406,5 +406,5 @@ Ensure the template's `body` size matches the target video dimensions:
 
 ## More Information
 
-For template development questions, feel free to ask in [GitHub Issues](https://github.com/AIDC-AI/Pixelle-Video/issues).
+For template development questions, feel free to ask in [GitHub Issues](https://github.com/MofaceJojo/morpheus-video-studio/issues).
 

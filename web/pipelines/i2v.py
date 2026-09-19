@@ -9,11 +9,10 @@ from loguru import logger
 import httpx
 from web.i18n import tr, get_language
 from web.pipelines.base import PipelineUI, register_pipeline_ui
-from web.components.content_input import render_version_info
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import check_and_warn_selfhost_workflow
-from pixelle_video.config import config_manager
-from pixelle_video.utils.os_util import create_task_output_dir
+from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.utils.os_util import create_task_output_dir
 
 class ImageToVideoPipelineUI(PipelineUI):
     """
@@ -31,7 +30,7 @@ class ImageToVideoPipelineUI(PipelineUI):
     def description(self):
         return tr("pipeline.i2v.description")
 
-    def render(self, pixelle_video: Any):
+    def render(self, morpheus_video_studio: Any):
         # Two-column layout
         left_col,right_col = st.columns([1, 1])
 
@@ -39,8 +38,7 @@ class ImageToVideoPipelineUI(PipelineUI):
         # Left Column: Asset Upload
         # ====================================================================
         with left_col:
-            asset_params = self.render_audio_visual_input(pixelle_video)
-            render_version_info()
+            asset_params = self.render_audio_visual_input(morpheus_video_studio)
 
         # ====================================================================
         # Right Column: Output Preview
@@ -50,9 +48,9 @@ class ImageToVideoPipelineUI(PipelineUI):
                 **asset_params
             }
 
-            self._render_output_preview(pixelle_video, video_params)
+            self._render_output_preview(morpheus_video_studio, video_params)
 
-    def render_audio_visual_input(self, pixelle_video) -> dict:
+    def render_audio_visual_input(self, morpheus_video_studio) -> dict:
         with st.container(border=True):
             st.markdown(f"**{tr('i2v.video_generation')}**")
 
@@ -164,7 +162,7 @@ class ImageToVideoPipelineUI(PipelineUI):
                 "duration": duration,
                 }
 
-    def _render_output_preview(self, pixelle_video: Any, video_params: dict):
+    def _render_output_preview(self, morpheus_video_studio: Any, video_params: dict):
         """Render output preview section"""
         with st.container(border=True):
             st.markdown(f"**{tr('section.video_generation')}**")
@@ -217,7 +215,7 @@ class ImageToVideoPipelineUI(PipelineUI):
                     async def generate_audio_visual_video():
                         task_dir, task_id = create_task_output_dir()
                         logger.info(f"[Initialization] Task Directory: {task_dir}")
-                        kit = await pixelle_video._get_or_create_comfykit()
+                        kit = await morpheus_video_studio._get_or_create_comfykit()
                         
                         import json
                         from pathlib import Path

@@ -83,5 +83,5 @@ Try:
 
 ## Other Questions
 
-Have other questions? Check [Troubleshooting](troubleshooting.md) or submit an [Issue](https://github.com/AIDC-AI/Pixelle-Video/issues).
+Have other questions? Check [Troubleshooting](troubleshooting.md) or submit an [Issue](https://github.com/MofaceJojo/morpheus-video-studio/issues).
 

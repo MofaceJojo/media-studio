@@ -1,0 +1,318 @@
+TASK 5 — DESENSITIZED ACCEPTANCE EVIDENCE
+Generated: 2026-08-02 Asia/Shanghai
+Workspace: /Volumes/MACDATA/morpheus-video-studio-latest
+Commit under test: 9794305
+
+This file deliberately separates:
+  A. REAL BROWSER EVIDENCE captured before the Chrome tab was finalized.
+  B. REAL SERVICE STDOUT captured during that browser session.
+  C. REPEATABLE NON-BROWSER TEST-DOUBLE EVIDENCE generated after review.
+
+No browser was accessed after browser.tabs.finalize().
+No credential, API key, cookie, local-storage value, or other secret is included.
+
+===============================================================================
+A. REAL BROWSER EVIDENCE — RAW/REDACTED DOM OUTPUT
+===============================================================================
+
+Acquisition method:
+  - Browser plugin selected Chrome for http://127.0.0.1:18501.
+  - A new acceptance tab navigated to /Video_Workshop.
+  - Evidence came from tab.playwright.domSnapshot() and locator.count().
+  - The tab was later finalized with status="deliverable" and was not touched again.
+
+A1. Final deliverable page locator counts (raw tool output)
+
+The final real browser call before finalization returned:
+
+{
+  finalSceneHeadings: 1,
+  finalNarrationBoxes: 5,
+  finalCollapsedPrompts: 5,
+  snapshot: <excerpt below>
+}
+
+Interpretation boundaries:
+  - finalSceneHeadings queried exact text "分镜 1", hence 1 is expected.
+  - The raw excerpt below independently lists 分镜 1 through 分镜 5.
+  - finalNarrationBoxes is the count of textboxes with accessible name "旁白".
+  - finalCollapsedPrompts is the count of exact "画面提示词" fold labels.
+  - Each scene owns one fold containing one image prompt and one video prompt.
+
+A2. Five numbered scenes and five narration inputs (raw DOM excerpt)
+
+  - textbox "文本输入":
+    - text: 《蜡笔小新》最感人的5集
+  - slider "分镜数":
+    - paragraph: "5"
+  - alert:
+    - paragraph: 分镜草稿已生成；旁白和画面提示词可以分别修改。
+  - paragraph:
+    - strong: 分镜 1
+  - paragraph: 旁白
+  - textbox "旁白":
+    - text: 第1项：小新变身超人｜小新为了保护家人，在梦境与现实交织的战斗中展现勇气，这种纯粹的守护欲真的太戳心了
+  - generic "keyboard_arrow_right 画面提示词":
+    - paragraph: 画面提示词
+  - paragraph:
+    - strong: 分镜 2
+  - paragraph: 旁白
+  - textbox "旁白":
+    - text: 第2项：小新寻找爸爸｜面对危机时，小新不顾一切地寻找寻找工作的赤屁爸爸，那种对家庭成员的强烈依赖感特别动人
+  - generic "keyboard_arrow_right 画面提示词":
+    - paragraph: 画面提示词
+  - paragraph:
+    - strong: 分镜 3
+  - paragraph: 旁白
+  - textbox "旁白":
+    - text: 第3项：小新与小白的离别｜小新意识到小白可能离开时，那份想要留住伙伴的无助感，让原本搞笑的动画瞬间变得催泪
+  - generic "keyboard_arrow_right 画面提示词":
+    - paragraph: 画面提示词
+  - paragraph:
+    - strong: 分镜 4
+  - paragraph: 旁白
+  - textbox "旁白":
+    - text: 第4项：小新面对成长｜当小新意识到自己正在慢慢长大，开始理解父母的辛苦时，那种成长的酸涩感让无数成年人共情
+  - generic "keyboard_arrow_right 画面提示词":
+    - paragraph: 画面提示词
+  - paragraph:
+    - strong: 分镜 5
+  - paragraph: 旁白
+  - textbox "旁白":
+    - text: 第5项：小新守护家园｜在对抗外星生物的最后时刻，小新用稚嫩的肩膀扛起责任，这种平凡人的英雄主义最是感人
+  - generic "keyboard_arrow_right 画面提示词":
+    - paragraph: 画面提示词
+  - paragraph: 当前草稿预计旁白约 70.3 秒；目标为 5 个分镜。
+
+Checkable totals in the excerpt:
+  numbered scene headings = 5 (分镜 1, 2, 3, 4, 5)
+  narration textboxes = 5
+  collapsed visual-prompt folds = 5
+
+A3. Collapsed-by-default proof and exact fold count (raw tool output)
+
+Before expanding any scene, the snapshot contained five
+"keyboard_arrow_right 画面提示词" entries and did not contain visible
+"图片提示词" or "视频提示词" textboxes.
+
+The locator action returned:
+
+{ promptExpanderCount: 5 }
+
+Only after that count was observed, the first fold was opened.
+
+A4. Separate image/video labels and representative real values (raw DOM excerpt)
+
+  - paragraph:
+    - strong: 分镜 1
+  - paragraph: 旁白
+  - textbox "旁白":
+    - text: 第1项：小新找爸爸｜在那个充满奇幻色彩的冒险故事里，小新为了寻找失踪的父亲，展现出了超越年龄的坚韧，这种纯粹的亲情真的太戳心了
+  - generic "keyboard_arrow_down 画面提示词" [active]:
+    - paragraph: 画面提示词
+  - paragraph: 图片提示词
+  - textbox "图片提示词":
+    - text: A cinematic medium shot of a small boy walking alone through a vast, surreal landscape filled with floating islands and glowing ethereal clouds. He carries a small lantern, walking towards a distant, shimmering silhouette of a man in the horizon. The atmosphere is mystical and adventurous, symbolizing a brave quest and pure familial devotion, soft lighting, dreamlike colors.
+  - paragraph: 视频提示词
+  - textbox "视频提示词":
+    - text: In a surreal, fantasy-themed landscape with swirling colorful clouds, little Shin-chan runs determinedly through a glowing forest, searching for his father. The camera uses a low-angle tracking shot, following his small footsteps. His expression is one of fierce resilience despite his trembling legs. The atmosphere is magical yet poignant, with shimmering light particles floating in the air, symbolizing his pure devotion.
+
+Browser evidence limitation (explicit):
+  The real browser expanded only scene 1. Therefore the browser directly showed
+  one image textbox and one video textbox with representative contents, while
+  five collapsed per-scene fold labels were counted. The real service log in
+  section B confirms that five image and five video prompt values were generated.
+  Section C independently exercises and prints five complete structured rows;
+  section C is automated evidence, not browser evidence.
+
+A5. Edit survives Streamlit rerender (raw DOM excerpt)
+
+After filling scene 1 image prompt and pressing Meta+Enter, a new snapshot showed:
+
+  - textbox "图片提示词" [active]:
+    - text: 验收编辑：夕阳下，小新牵着父亲的手走过春日部河堤，暖色电影光，近景。
+  - paragraph: 视频提示词
+  - textbox "视频提示词":
+    - text: In a surreal, fantasy-themed landscape with swirling colorful clouds, little Shin-chan runs determinedly through a glowing forest, searching for his father. The camera uses a low-angle tracking shot, following his small footsteps. His expression is one of fierce resilience despite his trembling legs. The atmosphere is magical yet poignant, with shimmering light particles floating in the air, symbolizing his pure devotion.
+
+A6. Stale warning (raw DOM excerpt)
+
+After changing the topic to 《蜡笔小新》最搞笑的5集:
+
+  - alert:
+    - paragraph: 你已经改过主题、内容或分镜数，当前草稿可能已过期，建议重新生成。
+
+A7. Clear removes narration and both prompt types (raw tool output)
+
+{
+  clearedNarrations: 0,
+  clearedImagePrompts: 0,
+  clearedVideoPrompts: 0,
+  clearedFirstCard: 0
+}
+
+A8. Final tab disposition (raw tool output)
+
+{
+  deliverableUrl: 'http://127.0.0.1:18501/Video_Workshop',
+  kept: 'deliverable'
+}
+
+===============================================================================
+B. REAL SERVICE STDOUT — TEXT-ONLY GENERATION / MEDIA NON-SUBMISSION WINDOW
+===============================================================================
+
+Acquisition method:
+  - stdout was polled from the actual Streamlit service session (PID 78997).
+  - PID cwd was independently checked as:
+      /Volumes/MACDATA/morpheus-video-studio-latest
+  - The following lines are copied from the first real browser draft-generation
+    window. No API key or request payload is present.
+
+B1. Narration generation
+
+2026-08-02 23:41:45.222 | INFO  | ...generate_narrations_from_topic:228 - Generating 5 narrations from topic: 《蜡笔小新》最感人的5集 (recipe: ranking)
+2026-08-02 23:41:45.256 | DEBUG | ...llm_service:220 - LLM call: model=google/gemma-4-26b-a4b-it:free, base_url=https://openrouter.ai/api/v1/, response_type=None
+2026-08-02 23:41:53       | INFO  | httpx - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-02 23:42:06.096 | INFO  | ...generate_narrations_from_topic:303 - Generated 5 narrations successfully
+
+B2. Image-prompt generation
+
+2026-08-02 23:42:06.096 | INFO  | ...generate_image_prompts:703 - Generating image prompts for 5 narrations (batch_size=10)
+2026-08-02 23:42:06.110 | DEBUG | ...llm_service:220 - LLM call: model=google/gemma-4-26b-a4b-it:free, base_url=https://openrouter.ai/api/v1/, response_type=None
+2026-08-02 23:42:10       | INFO  | httpx - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-02 23:42:46.999 | INFO  | ...generate_image_prompts:760 - Batch 1 completed successfully (5 prompts)
+2026-08-02 23:42:47.000 | INFO  | ...generate_image_prompts:788 - Generated 5 image prompts
+
+B3. Video-prompt generation
+
+2026-08-02 23:42:47.006 | INFO  | ...generate_video_prompts:818 - Generating video prompts for 5 narrations (batch_size=10)
+2026-08-02 23:42:47.033 | DEBUG | ...llm_service:220 - LLM call: model=google/gemma-4-26b-a4b-it:free, base_url=https://openrouter.ai/api/v1/, response_type=None
+2026-08-02 23:42:50       | INFO  | httpx - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-02 23:43:02.597 | INFO  | ...generate_video_prompts:866 - Batch 1 completed: 5 video prompts
+2026-08-02 23:43:02.597 | INFO  | ...generate_video_prompts:882 - Generated 5 video prompts
+
+B4. Local media service contact seen in the same captured window
+
+2026-08-02 23:41:25 | INFO | httpx - HTTP Request: GET http://127.0.0.1:8188/system_stats "HTTP/1.1 200 OK"
+2026-08-02 23:43:02 | INFO | httpx - HTTP Request: GET http://127.0.0.1:8188/system_stats "HTTP/1.1 200 OK"
+
+What these real logs prove:
+  - The draft action called only the configured :free text LLM for narration,
+    image-prompt text, and video-prompt text.
+  - Five values were completed for each of the three text categories.
+  - The only captured ComfyUI traffic was GET /system_stats health checking.
+
+Negative-evidence boundary:
+  Absence from a finite log excerpt alone is not a mathematical proof that no
+  backend call could ever happen. During acceptance, the real browser's final
+  Generate Video button was deliberately not clicked. Section C provides the
+  stronger controlled proof for the formal handoff: generate_video is replaced
+  at the call boundary, text prompt generators are watched, and media/video
+  backend doubles record all method calls.
+
+===============================================================================
+C. REPEATABLE NON-BROWSER TEST-DOUBLE EVIDENCE
+===============================================================================
+
+Evidence type: AUTOMATED TEST-DOUBLE; NOT REAL BROWSER EVIDENCE.
+
+Acquisition method:
+  - Executed from /Volumes/MACDATA/morpheus-video-studio-latest with Python 3.13.
+  - Used the same render_single_output() generate-button branch as the existing
+    pytest test, setting st.button.return_value=True.
+  - Replaced morpheus_video_studio.generate_video with MagicMock and made
+    run_async stop on the mock return value, before any real backend.
+  - Passed five distinct structured rows.
+  - Ran StandardPipeline.generate_content()/plan_visuals() with AsyncMock
+    watchers around all text prompt generators and MagicMock media/video
+    backends.
+  - Command exited 0 at 2026-08-02 23:55:35.
+
+C1. Generate button handoff (raw stdout)
+
+=== OUTPUT PREVIEW CLICK TEST DOUBLE ===
+button_clicked: True
+generate_video_is_test_double: true
+generate_video_call_count: 1
+run_async_call_count: 1
+captured_n_scenes: 5
+captured_mode: fixed
+captured_split_mode: line
+captured_text_lines: 5
+captured_scene_drafts_count: 5
+captured_scene_drafts:
+[
+  {
+    "index": 1,
+    "narration": "验收编辑旁白1",
+    "image_prompt": "验收编辑图片提示词1",
+    "video_prompt": "验收编辑视频提示词1"
+  },
+  {
+    "index": 2,
+    "narration": "验收编辑旁白2",
+    "image_prompt": "验收编辑图片提示词2",
+    "video_prompt": "验收编辑视频提示词2"
+  },
+  {
+    "index": 3,
+    "narration": "验收编辑旁白3",
+    "image_prompt": "验收编辑图片提示词3",
+    "video_prompt": "验收编辑视频提示词3"
+  },
+  {
+    "index": 4,
+    "narration": "验收编辑旁白4",
+    "image_prompt": "验收编辑图片提示词4",
+    "video_prompt": "验收编辑视频提示词4"
+  },
+  {
+    "index": 5,
+    "narration": "验收编辑旁白5",
+    "image_prompt": "验收编辑图片提示词5",
+    "video_prompt": "验收编辑视频提示词5"
+  }
+]
+real_media_backend_reached: false (generate_video itself is MagicMock; run_async stopped on its mock return value)
+
+C2. Five values reused without prompt regeneration or media calls (raw stdout)
+
+=== PIPELINE REUSE / NO REGENERATION ===
+content_narrations_count: 5
+content_narrations: ["验收编辑旁白1", "验收编辑旁白2", "验收编辑旁白3", "验收编辑旁白4", "验收编辑旁白5"]
+image_prompt_values_count: 5
+image_prompt_values: ["验收图片风格, 验收编辑图片提示词1", "验收图片风格, 验收编辑图片提示词2", "验收图片风格, 验收编辑图片提示词3", "验收图片风格, 验收编辑图片提示词4", "验收图片风格, 验收编辑图片提示词5"]
+video_prompt_values_count: 5
+video_prompt_values: ["视频前缀, 验收编辑视频提示词1", "视频前缀, 验收编辑视频提示词2", "视频前缀, 验收编辑视频提示词3", "视频前缀, 验收编辑视频提示词4", "视频前缀, 验收编辑视频提示词5"]
+narration_generator_await_count: 0
+image_prompt_generator_await_count: 0
+video_prompt_generator_await_count: 0
+media_backend_method_calls: []
+video_backend_method_calls: []
+
+C3. Existing pytest proof retained
+
+pytest -q -vv \
+  tests/test_scene_draft_pipeline.py::test_output_preview_passes_scene_drafts_to_video_generation \
+  tests/test_scene_draft_pipeline.py::test_generate_content_uses_scene_draft_narrations_without_llm \
+  tests/test_scene_draft_pipeline.py::test_plan_visuals_uses_edited_image_prompts_before_stock_branch \
+  tests/test_scene_draft_pipeline.py::test_plan_visuals_uses_edited_video_prompts_and_video_prefix
+
+Result: 4 passed in 0.27s
+
+===============================================================================
+D. REVIEWER CHECKLIST MAPPING
+===============================================================================
+
+[x] Five numbered browser scenes: A2
+[x] Five real browser narration inputs with representative content: A1/A2
+[x] Five real browser collapsed visual-prompt labels: A1/A2/A3
+[x] Separate real image/video prompt labels and representative content: A4
+[x] Five generated image and five generated video prompt counts: B2/B3
+[x] Five complete narration/image/video rows in controlled handoff: C1
+[x] Five prompt values reused without generators: C2
+[x] Real captured network calls limited to text completion + local health GET: B1-B4
+[x] Controlled proof that final click cannot reach real media backend: C1/C2
+[x] Browser vs automated evidence clearly distinguished: headers A/B/C
+

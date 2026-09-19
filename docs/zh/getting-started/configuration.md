@@ -1,6 +1,6 @@
 # 配置说明
 
-完成安装后，需要配置服务才能使用 Pixelle-Video。
+完成安装后，需要配置服务才能使用 Morpheus Video Studio。
 
 ---
 

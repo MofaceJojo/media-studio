@@ -1,22 +1,22 @@
 # API 使用
 
-Pixelle-Video 提供完整的 Python API，方便集成到你的项目中。
+Morpheus Video Studio 提供完整的 Python API，方便集成到你的项目中。
 
 ---
 
 ## 快速开始
 
 ```python
-from pixelle_video.service import PixelleVideoCore
+from morpheus_video_studio.service import MorpheusVideoStudioCore
 import asyncio
 
 async def main():
     # 初始化
-    pixelle = PixelleVideoCore()
-    await pixelle.initialize()
+    morpheus = MorpheusVideoStudioCore()
+    await morpheus.initialize()
     
     # 生成视频
-    result = await pixelle.generate_video(
+    result = await morpheus.generate_video(
         text="为什么要养成阅读习惯",
         mode="generate",
         n_scenes=5

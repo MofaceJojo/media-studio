@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
       args:
         USE_CN_MIRROR: ${USE_CN_MIRROR:-false}
-    container_name: pixelle-video-api
+    container_name: morpheus-video-studio-api
     command: .venv/bin/python api/app.py --host 0.0.0.0 --port 8000
     depends_on:
       init:
@@ -71,7 +71,7 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - pixelle-network
+      - morpheus-network
 
   # Web UI Service - Streamlit frontend
   web:
@@ -80,7 +80,7 @@ services:
       dockerfile: Dockerfile
       args:
         USE_CN_MIRROR: ${USE_CN_MIRROR:-false}
-    container_name: pixelle-video-web
+    container_name: morpheus-video-studio-web
     command: .venv/bin/streamlit run web/app.py --server.port 8501 --server.address 0.0.0.0
     depends_on:
       init:
@@ -115,9 +115,9 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - pixelle-network
+      - morpheus-network
 
 networks:
-  pixelle-network:
+  morpheus-network:
     driver: bridge
 

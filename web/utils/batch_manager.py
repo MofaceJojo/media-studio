@@ -37,7 +37,7 @@ class SimpleBatchManager:
     
     def execute_batch(
         self,
-        pixelle_video,
+        morpheus_video_studio,
         topics: List[str],
         shared_config: Dict[str, Any],
         overall_progress_callback: Optional[Callable] = None,
@@ -47,7 +47,7 @@ class SimpleBatchManager:
         Execute batch generation with shared config
         
         Args:
-            pixelle_video: PixelleVideoCore instance
+            morpheus_video_studio: MorpheusVideoStudioCore instance
             topics: List of topics (one per video)
             shared_config: Shared configuration for all videos
             overall_progress_callback: Callback for overall progress
@@ -82,23 +82,26 @@ class SimpleBatchManager:
             try:
                 logger.info(f"Task {idx}/{self.total_count} started: {topic}")
                 
-                # Extract title_prefix from shared_config (not a valid parameter for generate_video)
+                # Extract title controls before merging the shared generation config.
                 title_prefix = shared_config.get("title_prefix")
+                explicit_title = shared_config.get("title")
                 
                 # Build task params (merge topic with shared config, excluding title_prefix)
                 task_params = {
                     "text": topic,  # Topic as input
-                    "mode": "generate",  # Fixed mode
+                    "mode": shared_config.get("mode", "generate"),
                 }
                 
                 # Merge shared config, excluding title_prefix and None values
                 # Filter out None values to avoid interfering with parameter logic in generate_video
                 for key, value in shared_config.items():
-                    if key != "title_prefix" and value is not None:
+                    if key not in ("title_prefix", "title") and value is not None:
                         task_params[key] = value
                 
                 # Generate title using title_prefix
-                if title_prefix:
+                if explicit_title:
+                    task_params["title"] = explicit_title
+                elif title_prefix:
                     task_params["title"] = f"{title_prefix} - {topic}"
                 else:
                     # Use topic as title
@@ -110,7 +113,7 @@ class SimpleBatchManager:
                 
                 # Execute generation
                 from web.utils.async_helpers import run_async
-                result = run_async(pixelle_video.generate_video(**task_params))
+                result = run_async(morpheus_video_studio.generate_video(**task_params))
                 
                 # Extract task_id from video_path (e.g., output/20251118_173821_f96a/final.mp4)
                 from pathlib import Path
@@ -162,4 +165,3 @@ class SimpleBatchManager:
             "success_count": success_count,
             "failed_count": failed_count
         }
-

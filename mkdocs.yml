@@ -1,13 +1,13 @@
-site_name: Pixelle-Video
+site_name: Morpheus Video Studio
 site_description: AI Video Creator - Generate a short video in 3 minutes
-site_author: Pixelle.AI
-site_url: https://AIDC-AI.github.io/Pixelle-Video/
+site_author: Morpheus Studio
+site_url: https://MofaceJojo.github.io/morpheus-video-studio/
 
-repo_name: AIDC-AI/Pixelle-Video
-repo_url: https://github.com/AIDC-AI/Pixelle-Video
+repo_name: MofaceJojo/morpheus-video-studio
+repo_url: https://github.com/MofaceJojo/morpheus-video-studio
 edit_uri: edit/main/docs/
 
-copyright: Copyright &copy; 2025 Pixelle.AI
+copyright: Copyright &copy; 2025 Morpheus Studio
 
 theme:
   name: material
@@ -164,7 +164,7 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/AIDC-AI/Pixelle-Video
+      link: https://github.com/MofaceJojo/morpheus-video-studio
       name: GitHub Repository
 
 extra_css:

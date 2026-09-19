@@ -11,7 +11,7 @@
 # limitations under the License.
 
 """
-International language support for Pixelle-Video Web UI
+International language support for Morpheus Video Studio Web UI
 """
 
 import json
@@ -76,7 +76,7 @@ def tr(key: str, fallback: Optional[str] = None, **kwargs) -> str:
         Translated text
     
     Example:
-        tr("app.title")  # => "Pixelle-Video"
+        tr("app.title")  # => "Morpheus Video Studio"
         tr("error.missing_field", field="API Key")  # => "请填写 API Key"
     """
     locale = _locales.get(_current_language, {})
