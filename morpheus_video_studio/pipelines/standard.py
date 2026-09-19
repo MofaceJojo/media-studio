@@ -369,7 +369,14 @@ class StandardPipeline(LinearVideoPipeline):
         if ctx.resumed:
             return
         # === Handle TTS parameter compatibility ===
-        tts_inference_mode = ctx.params.get("tts_inference_mode")
+        # Fall back to the configured default TTS mode (e.g. omnivoice clone
+        # voice) instead of hard-coding "local" when the request omits it.
+        _cfg_tts_mode = (
+            self.core.config.get("comfyui", {})
+            .get("tts", {})
+            .get("inference_mode", "local")
+        )
+        tts_inference_mode = ctx.params.get("tts_inference_mode") or _cfg_tts_mode
         tts_voice = ctx.params.get("tts_voice")
         voice_id = ctx.params.get("voice_id")
         tts_workflow = ctx.params.get("tts_workflow")
