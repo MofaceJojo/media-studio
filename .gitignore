@@ -75,9 +75,9 @@ site/
 data
 output
 
-plans/
-examples/
-repositories/
+/plans/
+/examples/
+/repositories/
 
 *.out
 
