@@ -73,15 +73,16 @@ ensure_local_ffmpeg_on_path()
 def ensure_morpheus_video_studio_root_path() -> str:
     """
     Ensure Morpheus Video Studio root path exists and return the path
-    
+
+    Note: the output base directory is no longer created here. It is resolved
+    from configuration (see get_output_base_dir) and created on demand by
+    get_output_path, so choosing a custom output directory does not leave a
+    stray empty "<root>/output" behind.
+
     Returns:
         Root path as string
     """
     root_path = get_morpheus_video_studio_root_path()
-    root_path_obj = Path(root_path)
-    output_dir = root_path_obj / 'output'
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
     return root_path
 
 
@@ -157,27 +158,61 @@ def get_data_path(*paths: str) -> str:
     return data_path
 
 
+def resolve_output_dir(raw: Optional[str]) -> str:
+    """Resolve a raw output-dir setting into an absolute path.
+
+    - empty / None  -> "<project_root>/output" (default)
+    - absolute path -> used as-is
+    - relative path -> resolved against the project root
+    """
+    if raw and raw.strip():
+        candidate = Path(raw.strip())
+        if not candidate.is_absolute():
+            candidate = Path(get_morpheus_video_studio_root_path()) / raw.strip()
+        return str(candidate.resolve())
+    return os.path.join(get_morpheus_video_studio_root_path(), "output")
+
+
+def get_output_base_dir() -> str:
+    """Return the effective output base directory (resolved from configuration).
+
+    Reads the ``output_dir`` setting from the global ConfigManager. Falls back to
+    the default "<project_root>/output" when unset or when the config system is
+    unavailable (e.g. standalone scripts). The config system is imported lazily
+    to avoid a circular import (config does not depend on os_util).
+    """
+    try:
+        from morpheus_video_studio.config import config_manager
+        raw = config_manager.get("output_dir", "") or ""
+    except Exception:
+        raw = ""
+    return resolve_output_dir(raw)
+
+
 def get_output_path(*paths: str) -> str:
     """
     Get path relative to Morpheus Video Studio output folder
 
+    The output base directory is configurable via the ``output_dir`` setting
+    (see get_output_base_dir); it defaults to "<project_root>/output".
+
     Ensures output directory exists before returning path.
-    
+
     Args:
         *paths: Path components to join
-    
+
     Returns:
         Absolute path to output directory or file
-    
+
     Example:
         get_output_path("video.mp4")
-        # Returns: "/path/to/project/output/video.mp4"
+        # Returns: "<output_base_dir>/video.mp4"
     """
-    output_path = get_root_path("output")
+    output_path = get_output_base_dir()
 
     # Ensure output directory exists
     os.makedirs(output_path, exist_ok=True)
-    
+
     if paths:
         return os.path.join(output_path, *paths)
     return output_path

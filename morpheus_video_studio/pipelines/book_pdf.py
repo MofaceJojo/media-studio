@@ -15,6 +15,7 @@ from loguru import logger
 
 from morpheus_video_studio.config import config_manager
 from morpheus_video_studio.services.notebooklm_service import NotebookLMService
+from morpheus_video_studio.utils.os_util import get_output_path
 from morpheus_video_studio.utils.document_text import extract_text_from_document
 
 
@@ -75,7 +76,7 @@ class BookPDFVideoPipeline:
             raise FileNotFoundError(audio)
 
         task_id = self._safe_stem(source.stem)
-        task_dir = self.project_root / "output" / f"book_document_{task_id}"
+        task_dir = Path(get_output_path(f"book_document_{task_id}"))
         if task_dir.exists():
             shutil.rmtree(task_dir)
         for sub in ["pages", "ocr", "redrawn", "captions", "segments", "work"]:

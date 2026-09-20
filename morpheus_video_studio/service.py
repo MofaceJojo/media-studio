@@ -24,6 +24,7 @@ from loguru import logger
 from comfykit import ComfyKit
 
 from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.utils.os_util import get_output_base_dir
 from morpheus_video_studio.services.llm_service import LLMService
 from morpheus_video_studio.services.tts_service import TTSService
 from morpheus_video_studio.services.media import MediaService
@@ -199,7 +200,7 @@ class MorpheusVideoStudioCore:
         self.video = VideoService()
         self.hyperframe = HyperFrameService(self.config)
         self.frame_processor = FrameProcessor(self)
-        self.persistence = PersistenceService(output_dir="output")
+        self.persistence = PersistenceService(output_dir=get_output_base_dir())
         self.history = HistoryManager(self.persistence)
         
         # 2. Register video generation pipelines

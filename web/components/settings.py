@@ -14,12 +14,19 @@
 System settings component for web UI
 """
 
+import os
+
 import streamlit as st
 
 from web.i18n import tr
 from web.utils.async_helpers import run_async
 from web.utils.streamlit_helpers import safe_rerun
 from morpheus_video_studio.config import config_manager
+from morpheus_video_studio.utils.os_util import (
+    get_morpheus_video_studio_root_path,
+    get_output_base_dir,
+    resolve_output_dir,
+)
 
 
 def _secret_input(label: str, *, key: str, help_text: str, has_saved_value: bool) -> str:
@@ -565,6 +572,30 @@ def render_advanced_settings():
                         except Exception as e:
                             st.error(f"Pixabay 测试失败：{str(e)}")
 
+        # ====================================================================
+        # Output Directory Settings
+        # ====================================================================
+        saved_output_dir = (config_manager.get("output_dir", "") or "").strip()
+        default_output_dir = os.path.join(get_morpheus_video_studio_root_path(), "output")
+        with st.container(border=True):
+            st.markdown("**输出目录**")
+            st.caption(
+                "生成的视频与工程文件默认写入这里。留空表示使用项目目录下的 output/；"
+                "也可以填写绝对路径（如 /Volumes/MACDATA/morpheus-output）或相对项目根目录的路径。"
+                "修改后点击底部「保存设置」生效。"
+            )
+            output_dir_value = st.text_input(
+                "输出目录路径",
+                value=saved_output_dir,
+                help="留空 = 项目目录/output。可填绝对路径或相对项目根目录的路径。",
+                placeholder=default_output_dir,
+                key="output_dir_input",
+            )
+            resolved_output_dir = (
+                resolve_output_dir(output_dir_value) if output_dir_value.strip() else default_output_dir
+            )
+            st.caption(f"实际写入目录：{resolved_output_dir}")
+
         with st.container(border=True):
             st.markdown("**本地服务控制**")
             st.caption("把常用的本地服务启动命令记在这里，后面可以直接一键启动 ComfyUI、OmniVoice 和 Media Studio Web。")
@@ -770,7 +801,10 @@ def render_advanced_settings():
                         pexels_api_key=effective_pexels_api_key,
                         pixabay_api_key=effective_pixabay_api_key,
                     )
-                    
+
+                    # Save output directory setting (empty string = use default <root>/output)
+                    config_manager.update({"output_dir": output_dir_value.strip()})
+
                     config_manager.save()
                     if llm_saved:
                         st.success(tr("status.config_saved"))

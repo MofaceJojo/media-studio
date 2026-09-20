@@ -143,6 +143,12 @@ class LocalServiceControlConfig(BaseModel):
 class MorpheusVideoStudioConfig(BaseModel):
     """Morpheus Video Studio main configuration"""
     project_name: str = Field(default="Morpheus Video Studio", description="Project name")
+    output_dir: str = Field(
+        default="",
+        description="Output directory for generated videos and project files. "
+                    "Empty = use '<project_root>/output'. Absolute path is used as-is; "
+                    "relative path is resolved against the project root.",
+    )
     llm: LLMConfig = Field(default_factory=LLMConfig)
     comfyui: ComfyUIConfig = Field(default_factory=ComfyUIConfig)
     hyperframe: HyperFrameConfig = Field(default_factory=HyperFrameConfig)
